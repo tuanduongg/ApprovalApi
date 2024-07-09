@@ -21,7 +21,19 @@ export class UsersService {
         return true
     }
     async all() {
-        return await this.repository.find();
+        return await this.repository.find({
+            select:
+            {
+                fullName:true,
+                userId:true,
+                userName:true,
+                role:{
+                    roleName:true
+                },
+                isRoot:true
+            },
+            relations:['role']
+        });
     }
     async fake() {
         const hashPasswordString = await hashPassword('1234');

@@ -13,8 +13,7 @@ export class AuthController {
         const password = body?.password;
         const data = await this.service.signIn(username, password);
         if (data) {
-            res.cookie('token', data?.token, { httpOnly: true }); // Set cookie
-            return res.status(HttpStatus.OK).send({ message: 'Logged in successfully',user:data?.user });
+            return res.status(HttpStatus.OK).send({ message: 'Logged in successfully',data });
         } else if (data === null) { //username not found
             return res.status(HttpStatus.UNAUTHORIZED).send({ message: 'Username not found!' });
         } else { //password faild

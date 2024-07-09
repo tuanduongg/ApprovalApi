@@ -8,6 +8,12 @@ import { ConnectionOptions, createConnection } from 'typeorm';
 import { UsersModule } from './modules/users/users.module';
 import { ConfigDB } from 'src/database/configDB';
 import { User } from 'src/database/entity/user.entity';
+import { Role } from 'src/database/entity/role.entity';
+import { CategoryConcept } from 'src/database/entity/category_concept.entity';
+import { Concept } from 'src/database/entity/concept.entity';
+import { HistoryConcept } from 'src/database/entity/history_concept.entity';
+import { FileConcept } from 'src/database/entity/file_concept.entity';
+import { CategoryConceptModule } from './modules/category_concept/category_concept.module';
 
 @Module({
   imports: [
@@ -22,7 +28,7 @@ import { User } from 'src/database/entity/user.entity';
           password: ConfigDB?.password,
           database: ConfigDB?.database,
           options: { trustServerCertificate: true }, //for mssql
-          entities: [User],
+          entities: [User,Role,CategoryConcept,Concept,HistoryConcept,FileConcept],
           requestTimeout: 30000, //for mssql
           synchronize: true,
           pool: {
@@ -39,6 +45,7 @@ import { User } from 'src/database/entity/user.entity';
     } as TypeOrmModuleAsyncOptions),
     AuthModule,
     UsersModule,
+    CategoryConceptModule
   ],
   controllers: [AppController],
   providers: [AppService],
