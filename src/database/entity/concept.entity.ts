@@ -2,6 +2,7 @@ import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, OneToMan
 import { CategoryConcept } from './category_concept.entity';
 import { HistoryConcept } from './history_concept.entity';
 import { FileConcept } from './file_concept.entity';
+import { User } from './user.entity';
 
 @Entity()
 export class Concept {
@@ -11,7 +12,7 @@ export class Concept {
   @Column({ nullable: true })
   modelName: string;
 
-  @Column({ unique: true })
+  @Column({ nullable: true })
   plName: string;
 
   @Column({ nullable: true })
@@ -24,17 +25,17 @@ export class Concept {
   regisDate: string;
   
   @Column({ nullable: true })
-  registrator: string;
-
-  @Column({ nullable: true })
   status: string;
 
 
   @ManyToOne(() => CategoryConcept, (ref) => ref.concepts)
   @JoinColumn({name : 'categoryId', referencedColumnName: 'categoryId'})
   category: CategoryConcept
+  @ManyToOne(() => User, (ref) => ref.concepts)
+  @JoinColumn({name : 'userId', referencedColumnName: 'userId'})
+  user: User
 
-  @OneToMany(() => HistoryConcept, (ref) => ref.concepts)
+  @OneToMany(() => HistoryConcept, (ref) => ref.concept)
   histories: HistoryConcept[];
 
   @OneToMany(() => FileConcept, (ref) => ref.concept)

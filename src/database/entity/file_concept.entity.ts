@@ -20,7 +20,7 @@ export class FileConcept {
   fileExtenstion: string;
   
   @Column({ nullable: true })
-  fileSize: string;
+  fileSize: number;
   
   @Column({ nullable: true })
   fileUrl: string;

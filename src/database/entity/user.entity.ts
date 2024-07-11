@@ -1,5 +1,6 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { Role } from './role.entity';
+import { Concept } from './concept.entity';
 
 @Entity()
 export class User {
@@ -21,4 +22,7 @@ export class User {
   @ManyToOne(() => Role, (ref) => ref.users)
   @JoinColumn({name : 'roleId', referencedColumnName: 'roleId'})
   role: Role
+
+  @OneToMany(() => Concept, (ref) => ref.user)
+  concepts: Concept[];
 }

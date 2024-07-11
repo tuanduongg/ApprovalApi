@@ -26,5 +26,5 @@ export class HistoryConcept {
 
   @ManyToOne(() => Concept, (ref) => ref.histories)
   @JoinColumn({name : 'conceptId', referencedColumnName: 'conceptId'})
-  concepts: Concept
+  concept: Concept
 }

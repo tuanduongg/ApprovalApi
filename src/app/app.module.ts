@@ -14,6 +14,8 @@ import { Concept } from 'src/database/entity/concept.entity';
 import { HistoryConcept } from 'src/database/entity/history_concept.entity';
 import { FileConcept } from 'src/database/entity/file_concept.entity';
 import { CategoryConceptModule } from './modules/category_concept/category_concept.module';
+import { RoleModule } from './modules/role/role.module';
+import { ConceptModule } from './modules/concept/concept.module';
 
 @Module({
   imports: [
@@ -45,7 +47,9 @@ import { CategoryConceptModule } from './modules/category_concept/category_conce
     } as TypeOrmModuleAsyncOptions),
     AuthModule,
     UsersModule,
-    CategoryConceptModule
+    CategoryConceptModule,
+    RoleModule,
+    ConceptModule
   ],
   controllers: [AppController],
   providers: [AppService],
