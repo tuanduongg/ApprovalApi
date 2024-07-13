@@ -25,7 +25,7 @@ export class Concept {
   regisDate: string;
   
   @Column({ nullable: true })
-  status: string;
+  approval: string; // nguoi duyet
 
 
   @ManyToOne(() => CategoryConcept, (ref) => ref.concepts)

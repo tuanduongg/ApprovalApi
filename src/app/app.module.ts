@@ -16,9 +16,14 @@ import { FileConcept } from 'src/database/entity/file_concept.entity';
 import { CategoryConceptModule } from './modules/category_concept/category_concept.module';
 import { RoleModule } from './modules/role/role.module';
 import { ConceptModule } from './modules/concept/concept.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 
 @Module({
   imports: [
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'public'),
+    }),
     ConfigModule.forRoot(),
     TypeOrmModule.forRootAsync({
       useFactory: async (): Promise<ConnectionOptions> => {
@@ -30,7 +35,14 @@ import { ConceptModule } from './modules/concept/concept.module';
           password: ConfigDB?.password,
           database: ConfigDB?.database,
           options: { trustServerCertificate: true }, //for mssql
-          entities: [User,Role,CategoryConcept,Concept,HistoryConcept,FileConcept],
+          entities: [
+            User,
+            Role,
+            CategoryConcept,
+            Concept,
+            HistoryConcept,
+            FileConcept,
+          ],
           requestTimeout: 30000, //for mssql
           synchronize: true,
           pool: {
@@ -49,9 +61,9 @@ import { ConceptModule } from './modules/concept/concept.module';
     UsersModule,
     CategoryConceptModule,
     RoleModule,
-    ConceptModule
+    ConceptModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}

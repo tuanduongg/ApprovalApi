@@ -30,3 +30,7 @@ export const randomFileName = Array(32)
   .fill(null)
   .map(() => Math.round(Math.random() * 16).toString(16))
   .join('');
+  
+export function getFileNameWithoutExtension(originalname: string): string {
+  return originalname.substring(0, originalname.lastIndexOf('.'));
+}

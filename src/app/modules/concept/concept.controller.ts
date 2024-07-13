@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Get,
   Post,
   Req,
   Res,
@@ -30,8 +29,29 @@ export class ConceptController {
     return await this.service.add(res, request, body, files);
   }
   @UseGuards(AuthGuard)
+  @Post('/update')
+  @UseInterceptors(FilesInterceptor('files'))
+  async update(
+    @Res() res: Response,
+    @Req() request: Request,
+    @Body() body,
+    @UploadedFiles() files: Array<Express.Multer.File>,
+  ) {
+    return await this.service.update(res, request, body, files);
+  }
+  @UseGuards(AuthGuard)
+  @Post('/detail')
+  async detail(@Res() res: Response, @Req() request: Request, @Body() body) {
+    return await this.service.detail(res, request, body);
+  }
+  @UseGuards(AuthGuard)
   @Post('/all')
   async all(@Res() res: Response, @Req() request: Request, @Body() body) {
     return await this.service.all(res, request, body);
+  }
+  @UseGuards(AuthGuard)
+  @Post('/accept')
+  async accept(@Res() res: Response, @Req() request: Request, @Body() body) {
+    return await this.service.accept(res, request, body);
   }
 }

@@ -1,6 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { hashPassword } from 'src/core/utils/helper';
+import { comparePasswords, hashPassword } from 'src/core/utils/helper';
 import { Role } from 'src/database/entity/role.entity';
 import { User } from 'src/database/entity/user.entity';
 import { ILike, Repository } from 'typeorm';
@@ -12,9 +12,9 @@ export class UsersService {
     private repository: Repository<User>,
   ) {}
 
-  async findOne(username: string) {
-    const user = await this.repository.findOne({
-      where: { userName: username },
+  async findOne(username: string): Promise<User> {
+    const user = await this.repository.findOneBy({
+      userName: username,
     });
     return user;
   }
@@ -44,7 +44,7 @@ export class UsersService {
     }
   }
   async update(body, request, res) {
-    const { fullName,  role, isRoot, userId } = body;
+    const { fullName, role, isRoot, userId } = body;
     if (!userId) {
       return res
         .status(HttpStatus.BAD_REQUEST)
@@ -79,6 +79,17 @@ export class UsersService {
       relations: ['role'],
     });
   }
+  async checkRole(body, request, res) {
+    const user = await this.repository.findOne({
+      where: { userName: request?.user?.userName },
+      relations: ['role'],
+    });
+
+    if (user) {
+      return res.status(HttpStatus.OK).send(user?.role);
+    }
+    return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Not found!' });
+  }
   async find(body, request, res) {
     if (!body?.userId) {
       return res
@@ -92,6 +103,41 @@ export class UsersService {
     });
     userFind.password = '';
     return res.status(HttpStatus.OK).send(userFind);
+  }
+  async changePassword(body, request, res) {
+    const username = request?.user?.userName;
+    const { currentPassword, newPassword, confirmPassword } = body;
+    if (newPassword !== confirmPassword) {
+      return res
+        .status(HttpStatus.BAD_REQUEST)
+        .send({ message: 'New password must be equal Confirm password!' });
+    }
+    if (!username) {
+      return res
+        .status(HttpStatus.BAD_REQUEST)
+        .send({ message: 'userId not found!' });
+    }
+    const userFind = await this.findOne(username);
+    if (userFind) {
+      const checkPassword = await comparePasswords(
+        currentPassword,
+        userFind?.password,
+      );
+      if (checkPassword) {
+        const hashPass = await hashPassword(newPassword);
+        userFind.password = hashPass;
+        await this.repository.save(userFind);
+        delete userFind.password;
+        return res.status(HttpStatus.OK).send(userFind);
+      }
+      return res
+        .status(HttpStatus.BAD_REQUEST)
+        .send({ message: 'Current password wrong!' });
+    } else {
+      return res
+        .status(HttpStatus.BAD_REQUEST)
+        .send({ message: 'User not found!' });
+    }
   }
   async fake() {
     const hashPasswordString = await hashPassword('1234');
