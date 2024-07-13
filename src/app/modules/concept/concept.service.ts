@@ -22,7 +22,7 @@ export class ConceptService {
     private repository: Repository<Concept>,
     private readonly fileConceptService: FileConceptService,
     private readonly historyConceptService: HistoryConceptService,
-  ) {}
+  ) { }
 
   async all(res, request, body) {
     const {
@@ -37,7 +37,9 @@ export class ConceptService {
       page,
       rowsPerPage
     } = body;
-    const newpage = page <= 1 ? 1 : page;
+    const take = +rowsPerPage || 10;
+    const newPage = +page || 0;
+    const skip = newPage * take;
 
     const whereOBJ = {
       regisDate: Between(startDate, endDate),
@@ -79,8 +81,8 @@ export class ConceptService {
         },
       },
       relations: ['category', 'user'],
-      skip: (newpage - 1) * rowsPerPage,
-      take: rowsPerPage,
+      skip: skip,
+      take: take,
     });
     const newData = data.map((item) => ({
       ...item,
@@ -106,7 +108,7 @@ export class ConceptService {
           data,
           {
             type: 'UPDATE',
-            historyRemark: 'Accepted',
+            historyRemark: `Accepted by ${request?.user?.userName}`,
           },
           request,
         );
@@ -130,6 +132,17 @@ export class ConceptService {
       where: { conceptId: conceptId },
       relations: ['category', 'files'],
     });
+    return res.status(HttpStatus.OK).send(data);
+  }
+
+  async history(res, request, body) {
+    const conceptId = body?.conceptId;
+    if (!conceptId) {
+      return res
+        .status(HttpStatus.BAD_REQUEST)
+        .send({ message: 'Cannot found ID!' });
+    }
+    const data = await this.historyConceptService.findByConcept(+conceptId);
     return res.status(HttpStatus.OK).send(data);
   }
   async add(res, request, body, files) {
@@ -214,9 +227,8 @@ export class ConceptService {
         concept,
         {
           type: 'UPDATE',
-          historyRemark: `Update infomation ; ${
-            textFile?.length > 0 ? `Delete File ${textFile.join(' ,')}` : ''
-          }`,
+          historyRemark: `Update infomation ; ${textFile?.length > 0 ? `Delete File ${textFile.join(' ,')}` : ''
+            }`,
         },
         request,
       );

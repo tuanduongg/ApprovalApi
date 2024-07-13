@@ -49,9 +49,16 @@ export class ConceptController {
   async all(@Res() res: Response, @Req() request: Request, @Body() body) {
     return await this.service.all(res, request, body);
   }
+
   @UseGuards(AuthGuard)
   @Post('/accept')
   async accept(@Res() res: Response, @Req() request: Request, @Body() body) {
     return await this.service.accept(res, request, body);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('/history')
+  async history(@Res() res: Response, @Req() request: Request, @Body() body) {
+    return await this.service.history(res, request, body);
   }
 }

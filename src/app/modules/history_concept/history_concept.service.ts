@@ -9,10 +9,13 @@ export class HistoryConceptService {
   constructor(
     @InjectRepository(HistoryConcept)
     private repository: Repository<HistoryConcept>,
-  ) {}
+  ) { }
 
   async all() {
     return await this.repository.find({});
+  }
+  async findByConcept(conceptId: number) {
+    return await this.repository.find({ where: { concept: { conceptId: conceptId } }, order: { historyTime: 'DESC' } });
   }
   async add(concept: Concept, data: any, request) {
     const his = new HistoryConcept();
