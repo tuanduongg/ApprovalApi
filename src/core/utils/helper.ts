@@ -32,5 +32,9 @@ export const randomFileName = Array(32)
   .join('');
   
 export function getFileNameWithoutExtension(originalname: string): string {
-  return originalname.substring(0, originalname.lastIndexOf('.'));
+  if(originalname?.includes('.')) {
+
+    return originalname.substring(0, originalname.lastIndexOf('.'));
+  }
+  return originalname;
 }

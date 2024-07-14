@@ -21,10 +21,10 @@ export class HistoryConcept {
   @Column({ nullable: true })
   historyUsername: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, type: 'text' })
   historyRemark: string;
 
   @ManyToOne(() => Concept, (ref) => ref.histories)
-  @JoinColumn({name : 'conceptId', referencedColumnName: 'conceptId'})
+  @JoinColumn({ name: 'conceptId', referencedColumnName: 'conceptId' })
   concept: Concept
 }

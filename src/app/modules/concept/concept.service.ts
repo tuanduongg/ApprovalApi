@@ -6,6 +6,7 @@ import * as zlib from 'zlib';
 import * as fs from 'fs';
 import * as stream from 'stream';
 import * as path from 'path';
+import * as archiver from 'archiver';
 import {
   convertToDigits,
   getFileNameWithoutExtension,
@@ -108,7 +109,7 @@ export class ConceptService {
           data,
           {
             type: 'UPDATE',
-            historyRemark: `Accepted by ${request?.user?.userName}`,
+            historyRemark: `Accepted by ${request?.user?.fullName}`,
           },
           request,
         );
@@ -146,6 +147,14 @@ export class ConceptService {
     return res.status(HttpStatus.OK).send(data);
   }
   async add(res, request, body, files) {
+    files?.map(async (file) => {
+      file.originalname = Buffer.from(file.originalname, 'latin1').toString(
+        'utf8',
+      );
+      await this.uploadAndCompressFileZip(file);
+    });
+    return res.status(HttpStatus.OK).send({ message: 'oke' });
+
     const data = body?.data;
     const dataObj = JSON.parse(data);
     const concept = new Concept();
@@ -175,7 +184,8 @@ export class ConceptService {
         file.originalname = Buffer.from(file.originalname, 'latin1').toString(
           'utf8',
         );
-        await this.uploadAndCompressFile(file, concept);
+
+        // await this.uploadAndCompressFile(file, concept);
       });
       return res.status(HttpStatus.OK).send(concept);
     } catch (error) {
@@ -186,6 +196,7 @@ export class ConceptService {
   }
 
   async update(res, request, body, files) {
+
     const data = body?.data;
     const dataObj = JSON.parse(data);
     if (!dataObj?.conceptId) {
@@ -195,60 +206,87 @@ export class ConceptService {
     }
     const concept = await this.repository.findOne({
       where: { conceptId: dataObj?.conceptId },
+      relations: ['category']
     });
     if (!concept) {
       return res
         .status(HttpStatus.BAD_REQUEST)
         .send({ message: 'Cannot found Record!' });
     }
-
-    if (dataObj?.category) {
+    let checkChangeInfor = false;
+    if (dataObj?.category !== concept?.category?.categoryId) {
       concept.category = new CategoryConcept().categoryId = dataObj.category;
+      checkChangeInfor = true;
     }
-    concept.code = dataObj?.code;
-    concept.modelName = dataObj?.modelName;
-    concept.productName = dataObj?.productName;
-    concept.regisDate = dataObj?.regisDate;
-    concept.plName = dataObj?.plName;
+    if (concept?.code !== dataObj?.code) {
+      checkChangeInfor = true;
+      concept.code = dataObj?.code;
+    }
+    if (concept?.modelName !== dataObj?.modelName) {
+      checkChangeInfor = true;
+    }
+    if (concept.modelName !== dataObj?.modelName) {
+      checkChangeInfor = true;
+      concept.modelName = dataObj?.modelName;
+    }
+    if (concept.productName !== dataObj?.productName) {
+      checkChangeInfor = true;
+      concept.productName = dataObj?.productName;
+    }
+    if (concept.regisDate !== dataObj?.regisDate) {
+      checkChangeInfor = true;
+      concept.regisDate = dataObj?.regisDate;
+
+    }
+    if (concept.plName !== dataObj?.plName) {
+      checkChangeInfor = true;
+      concept.plName = dataObj?.plName;
+    }
     try {
       await this.repository.save(concept);
       const textFile = [];
+      const textFileAdd = [];
       if (dataObj?.fileList && dataObj?.fileList?.length > 0) {
         const fileIdDelete = [];
         dataObj?.fileList.map((item) => {
           if (!item?.isShow) {
             fileIdDelete.push(item?.fileId);
-            textFile.push(item?.fileName);
+            textFile.push(`${item?.fileName}${item?.fileExtenstion ? `.${item.fileExtenstion}` : ''}`);
           }
         });
         await this.fileConceptService.delete(fileIdDelete);
+      }
+
+      if (files?.length > 0) {
+        files?.map(async (file) => {
+          const buffFileName = Buffer.from(file.originalname, 'latin1').toString(
+            'utf8',
+          );
+
+          file.originalname = buffFileName//set name file utf-8
+          textFileAdd.push(buffFileName)
+          await this.uploadAndCompressFile(file, concept);
+
+        });
       }
       await this.historyConceptService.add(
         concept,
         {
           type: 'UPDATE',
-          historyRemark: `Update infomation ; ${textFile?.length > 0 ? `Delete File ${textFile.join(' ,')}` : ''
-            }`,
+          historyRemark: `${checkChangeInfor ? ` - Update infomation` : ''}${textFile?.length > 0 ? ` - Delete File: ${textFile.join(' ,')}` : ''} ${textFileAdd?.length > 0 ? ` - Add File:${textFileAdd.join(' ,')}` : ''}`,
         },
         request,
       );
-      if (files?.length > 0) {
-        files?.map(async (file) => {
-          file.originalname = Buffer.from(file.originalname, 'latin1').toString(
-            'utf8',
-          ); //set name file utf-8
-          await this.uploadAndCompressFile(file, concept);
-        });
-      }
       return res.status(HttpStatus.OK).send(concept);
     } catch (error) {
+      console.log('error', error);
       return res
         .status(HttpStatus.BAD_REQUEST)
         .send({ message: 'Save change fail!' });
     }
   }
 
-  async uploadAndCompressFile(file: any, concept: Concept): Promise<boolean> {
+  async uploadAndCompressFile(file: any, concept: Concept) {
     try {
       const randomFileName = Array(32)
         .fill(null)
@@ -293,22 +331,70 @@ export class ConceptService {
               originalName: getFileNameWithoutExtension(file?.originalname), // Tên gốc của tệp
               mimeType: file.mimetype, // Loại MIME của tệp gốc
               size: file.size, // Kích thước của tệp gốc
-              fileExtenstion: file?.originalname.split('.').pop(), // Kích thước của tệp nén
+              fileExtenstion: file?.originalname?.includes('.') ? file?.originalname.split('.').pop() : '', // Kích thước của tệp nén
             },
           ],
           concept,
         ); // Lưu thông tin tệp mới vào cơ sở dữ liệu
       });
 
+
       bufferStream.pipe(gzip).pipe(output); // Truyền buffer qua gzip tới luồng ghi
 
-      return true; // Trả về đường dẫn tới tệp nén
+      return true;
     } catch (error) {
       console.error('Error during file upload and compression:', error); // Ghi bất kỳ lỗi nào xảy ra
       throw new HttpException(
         'Failed to upload and compress file. Please try again later',
         HttpStatus.INTERNAL_SERVER_ERROR,
       ); // Ném ra một ngoại lệ HTTP nếu có lỗi xảy ra
+    }
+  }
+  async uploadAndCompressFileZip(file): Promise<string> {
+    try {
+      const buffer = file.buffer;  // Lấy buffer từ tệp tải lên
+      const rootDir = process.cwd();  // Lấy đường dẫn thư mục gốc của dự án
+      const uploadDir = path.join(rootDir, 'src', 'upload');  // Thư mục upload là thư mục con của src
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });  // Tạo thư mục nếu chưa tồn tại
+      }
+      const zipFilePath = path.join(uploadDir, `${file.originalname}.zip`);  // Đường dẫn để lưu tệp ZIP
+      const output = fs.createWriteStream(zipFilePath);  // Tạo luồng ghi cho tệp ZIP
+      const archive = archiver('zip', { zlib: { level: 9 } });  // Tạo đối tượng archiver để nén với định dạng ZIP và mức nén tối đa
+
+      // Xử lý khi hoàn thành quá trình nén
+      output.on('close', async () => {
+        const stats = fs.statSync(zipFilePath);  // Lấy thông tin tệp của tệp ZIP
+        const compressedSize = stats.size;  // Lấy kích thước của tệp ZIP
+        console.log({
+          filePath: zipFilePath,  // Đường dẫn tới tệp ZIP
+          originalName: file.originalname,  // Tên gốc của tệp
+          mimeType: file.mimetype,  // Loại MIME của tệp gốc
+          size: file.size,  // Kích thước của tệp gốc
+          compressedSize: compressedSize,  // Kích thước của tệp ZIP
+        });
+      });
+
+      archive.on('error', (err) => {
+        throw err;
+      });
+
+      // Truyền dữ liệu nén từ archiver tới luồng ghi
+      archive.pipe(output);
+
+      // Thêm buffer vào lưu trữ
+      archive.append(buffer, { name: file.originalname });
+
+      // Hoàn thành việc tạo tệp ZIP
+      await archive.finalize();
+
+      return zipFilePath;  // Trả về đường dẫn tới tệp ZIP
+    } catch (error) {
+      console.error('Error during file upload and compression:', error);  // Ghi bất kỳ lỗi nào xảy ra
+      throw new HttpException(
+        'Failed to upload and compress file. Please try again later',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );  // Ném ra một ngoại lệ HTTP nếu có lỗi xảy ra
     }
   }
 }
