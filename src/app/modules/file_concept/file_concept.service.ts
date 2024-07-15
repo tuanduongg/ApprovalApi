@@ -20,15 +20,16 @@ export class FileConceptService {
       try {
         await this.repository.remove(arrDelete);
         arrDelete.map((img) => {
-          const filePath = join(__dirname, '..', 'public', img.fileUrl).replace('dist\\app\\modules\\','');
-          console.log('filePath', filePath);
+          const filePath = join(__dirname, '..', 'public', img.fileUrl).replace(
+            'dist\\app\\modules\\',
+            '',
+          );
           fs.stat(filePath, function (err, stats) {
             if (err) {
               return console.error(err);
             }
             fs.unlink(filePath, function (err) {
               if (err) return console.log(err);
-              console.log('file deleted successfully');
             });
           });
         });
@@ -38,6 +39,12 @@ export class FileConceptService {
     }
     return null;
   }
+  async findById(id: number): Promise<FileConcept> {
+    return await this.repository.findOneBy({ fileId: id });
+  }
+  async findByArrayId(ids: number[]){
+    return await this.repository.find({ where: { fileId: In(ids) } });
+  }
   async all() {
     return await this.repository.find({});
   }
@@ -45,8 +52,6 @@ export class FileConceptService {
     if (files && files?.length > 0) {
       const arrFile = [];
       files.map((file) => {
-        console.log('file', file);
-
         const fileNew = new FileConcept();
         fileNew.concept = concept;
         fileNew.fileName = file?.originalName;

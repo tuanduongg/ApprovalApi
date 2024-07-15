@@ -10,8 +10,11 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
 import { ConceptService } from './concept.service';
-import { FilesInterceptor } from '@nestjs/platform-express';
+import {
+  FilesInterceptor,
+} from '@nestjs/platform-express';
 import { Express } from 'express';
+import { multerOptions } from 'src/core/utils/multer.config';
 
 @Controller('concept')
 export class ConceptController {
@@ -19,23 +22,24 @@ export class ConceptController {
 
   @UseGuards(AuthGuard)
   @Post('/add')
-  @UseInterceptors(FilesInterceptor('files'))
+  // @UseInterceptors(FilesInterceptor('files'))
+  @UseInterceptors(FilesInterceptor('files', 30, multerOptions))
   async add(
     @Res() res: Response,
     @Req() request: Request,
     @Body() body,
-    @UploadedFiles() files: Array<Express.Multer.File>,
+    @UploadedFiles() files: Express.Multer.File[],
   ) {
     return await this.service.add(res, request, body, files);
   }
   @UseGuards(AuthGuard)
   @Post('/update')
-  @UseInterceptors(FilesInterceptor('files'))
+  @UseInterceptors(FilesInterceptor('files', 30, multerOptions))
   async update(
     @Res() res: Response,
     @Req() request: Request,
     @Body() body,
-    @UploadedFiles() files: Array<Express.Multer.File>,
+    @UploadedFiles() files: Express.Multer.File[],
   ) {
     return await this.service.update(res, request, body, files);
   }
@@ -56,6 +60,16 @@ export class ConceptController {
     return await this.service.accept(res, request, body);
   }
 
+  @UseGuards(AuthGuard)
+  @Post('/download')
+  async download(@Res() res: Response, @Req() request: Request, @Body() body) {
+    return await this.service.download(res, request, body);
+  }
+  @UseGuards(AuthGuard)
+  @Post('/download-multiple')
+  async downloadMultiple(@Res() res: Response, @Req() request: Request, @Body() body) {
+    return await this.service.downloadMultiple(res, request, body);
+  }
   @UseGuards(AuthGuard)
   @Post('/history')
   async history(@Res() res: Response, @Req() request: Request, @Body() body) {
