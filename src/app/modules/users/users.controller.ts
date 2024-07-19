@@ -26,7 +26,7 @@ export class UserController {
     @UseGuards(AuthGuard)
     @Get('/public')
     async public() {
-        return await this.service.all();
+        return await this.service.public();
     }
     @UseGuards(RootGuard)
     @UseGuards(AuthGuard)

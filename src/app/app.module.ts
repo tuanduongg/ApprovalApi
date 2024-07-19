@@ -34,7 +34,10 @@ import { join } from 'path';
           username: ConfigDB?.username,
           password: ConfigDB?.password,
           database: ConfigDB?.database,
-          options: { trustServerCertificate: true }, //for mssql
+          options: {
+            trustServerCertificate: true,
+            enableArithAbort: true,
+          }, //for mssql
           entities: [
             User,
             Role,

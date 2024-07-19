@@ -15,7 +15,6 @@ import { FileConceptService } from '../file_concept/file_concept.service';
 import { CategoryConcept } from 'src/database/entity/category_concept.entity';
 import { User } from 'src/database/entity/user.entity';
 import { HistoryConceptService } from '../history_concept/history_concept.service';
-import { join } from 'path';
 
 @Injectable()
 export class ConceptService {
@@ -85,6 +84,7 @@ export class ConceptService {
       relations: ['category', 'user'],
       skip: skip,
       take: take,
+      order: { regisDate: 'ASC' },
     });
     const newData = data.map((item) => ({
       ...item,
@@ -102,6 +102,11 @@ export class ConceptService {
     const data = await this.repository.findOne({
       where: { conceptId: conceptId },
     });
+    if (data?.approval) {
+      return res.status(HttpStatus.BAD_REQUEST).send({
+        message: 'Accepted by ' + data?.approval + '.Please refresh this page!',
+      });
+    }
     if (data && !data?.approval) {
       data.approval = request?.user?.userName;
       try {
@@ -110,13 +115,15 @@ export class ConceptService {
           data,
           {
             type: 'UPDATE',
-            historyRemark: `Accepted by ${request?.user?.fullName}`,
+            historyRemark: `Accepted by ${request?.user?.userName}`,
           },
           request,
         );
         return res.status(HttpStatus.OK).send(data);
       } catch (error) {
-        return res.status(HttpStatus.OK).send({ message: 'Update fail!' });
+        return res
+          .status(HttpStatus.BAD_REQUEST)
+          .send({ message: 'Update fail!' });
       }
     }
     return res
@@ -288,8 +295,12 @@ export class ConceptService {
         dataObj?.fileList.map((item) => {
           if (!item?.isShow) {
             fileIdDelete.push(item?.fileId);
+            const buffFileName = Buffer.from(item?.fileName, 'latin1').toString(
+              'utf8',
+            );
+            const fileName = getFileNameWithoutExtension(buffFileName);
             textFile.push(
-              `${item?.fileName}${item?.fileExtenstion ? `.${item.fileExtenstion}` : ''}`,
+              `${fileName}${item?.fileExtenstion ? `.${item.fileExtenstion}` : ''}`,
             );
           }
         });
@@ -299,13 +310,17 @@ export class ConceptService {
         const buffFileName = Buffer.from(item?.originalname, 'latin1').toString(
           'utf8',
         );
-        textFileAdd.push(`${buffFileName}`);
+        const fileName = getFileNameWithoutExtension(buffFileName);
+        const extenstionFile = getExtenstionFromOriginalName(item?.filename);
+        textFileAdd.push(
+          `${fileName}${extenstionFile ? '.' + extenstionFile : extenstionFile}`,
+        );
         return {
           filePath: `${item?.path}`.replace('public\\', ''), // Đường dẫn tới tệp nén
-          originalName: getFileNameWithoutExtension(buffFileName), // Tên gốc của tệp
+          originalName: fileName, // Tên gốc của tệp
           mimeType: item.mimetype, // Loại MIME của tệp gốc
           size: item.size, // Kích thước của tệp gốc
-          fileExtenstion: getExtenstionFromOriginalName(item?.filename), // Kích thước của tệp nén
+          fileExtenstion: extenstionFile, // Kích thước của tệp nén
         };
       });
       await this.fileConceptService.add(newFiles, concept); // Lưu thông tin tệp mới vào cơ sở dữ liệu
@@ -397,7 +412,9 @@ export class ConceptService {
       const filePath = path
         .join(__dirname, '..', 'public', `${url}`)
         .replace('dist\\app\\modules\\', '');
-      archive.file(filePath, { name: `${file?.fileName + '.' + file?.fileExtenstion}` });
+      archive.file(filePath, {
+        name: `${file?.fileName + '.' + file?.fileExtenstion}`,
+      });
     });
     archive.finalize();
     return archive;

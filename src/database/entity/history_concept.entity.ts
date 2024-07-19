@@ -21,7 +21,7 @@ export class HistoryConcept {
   @Column({ nullable: true })
   historyUsername: string;
 
-  @Column({ nullable: true, type: 'text' })
+  @Column({ type: 'nvarchar', length: 'max', nullable: true })
   historyRemark: string;
 
   @ManyToOne(() => Concept, (ref) => ref.histories)

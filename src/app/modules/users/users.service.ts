@@ -65,6 +65,22 @@ export class UsersService {
     await this.repository.save(userFind);
     return res.status(HttpStatus.OK).send(userFind);
   }
+  async public() {
+    return await this.repository.find({
+      where:{
+        isRoot:false
+      },
+      select: {
+        fullName: true,
+        userId: true,
+        userName: true,
+        role: {
+          roleName: true,
+        },
+      },
+      relations: ['role'],
+    });
+  }
   async all() {
     return await this.repository.find({
       select: {
