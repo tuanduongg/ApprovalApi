@@ -10,11 +10,14 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private repository: Repository<User>,
-  ) {}
+  ) { }
 
   async findOne(username: string): Promise<User> {
-    const user = await this.repository.findOneBy({
-      userName: username,
+    const user = await this.repository.findOne({
+      where: {
+        userName: username,
+      },
+      relations: ['role']
     });
     return user;
   }
@@ -67,8 +70,8 @@ export class UsersService {
   }
   async public() {
     return await this.repository.find({
-      where:{
-        isRoot:false
+      where: {
+        isRoot: false
       },
       select: {
         fullName: true,
