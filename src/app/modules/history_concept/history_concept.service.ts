@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Concept } from 'src/database/entity/concept.entity';
 import { HistoryConcept } from 'src/database/entity/history_concept.entity';
-import { Repository } from 'typeorm';
+import { DeleteResult, Repository } from 'typeorm';
 
 @Injectable()
 export class HistoryConceptService {
@@ -14,9 +14,16 @@ export class HistoryConceptService {
   async all() {
     return await this.repository.find({});
   }
+
   async findByConcept(conceptId: number) {
     return await this.repository.find({ where: { concept: { conceptId: conceptId } }, order: { historyTime: 'DESC' } });
   }
+
+  async deleteByConcept(conceptId: number): Promise<DeleteResult> {
+    const deleted = await this.repository.delete({ concept: { conceptId } });
+    return deleted;
+  }
+
   async add(concept: Concept, data: any, request) {
     const his = new HistoryConcept();
     his.concept = concept;

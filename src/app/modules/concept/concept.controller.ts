@@ -32,6 +32,7 @@ export class ConceptController {
   ) {
     return await this.service.add(res, request, body, files);
   }
+
   @UseGuards(AuthGuard)
   @Post('/update')
   @UseInterceptors(FilesInterceptor('files', 30, multerOptions))
@@ -43,11 +44,13 @@ export class ConceptController {
   ) {
     return await this.service.update(res, request, body, files);
   }
+
   @UseGuards(AuthGuard)
   @Post('/detail')
   async detail(@Res() res: Response, @Req() request: Request, @Body() body) {
     return await this.service.detail(res, request, body);
   }
+
   @UseGuards(AuthGuard)
   @Post('/all')
   async all(@Res() res: Response, @Req() request: Request, @Body() body) {
@@ -65,14 +68,22 @@ export class ConceptController {
   async download(@Res() res: Response, @Req() request: Request, @Body() body) {
     return await this.service.download(res, request, body);
   }
+
   @UseGuards(AuthGuard)
   @Post('/download-multiple')
   async downloadMultiple(@Res() res: Response, @Req() request: Request, @Body() body) {
     return await this.service.downloadMultiple(res, request, body);
   }
+
   @UseGuards(AuthGuard)
   @Post('/history')
   async history(@Res() res: Response, @Req() request: Request, @Body() body) {
     return await this.service.history(res, request, body);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('/delete')
+  async delete(@Res() res: Response, @Req() request: Request, @Body() body) {
+    return await this.service.delete(res, request, body);
   }
 }

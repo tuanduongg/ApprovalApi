@@ -23,7 +23,7 @@ export class ConceptService {
     private repository: Repository<Concept>,
     private readonly fileConceptService: FileConceptService,
     private readonly historyConceptService: HistoryConceptService,
-  ) {}
+  ) { }
 
   async all(res, request, body) {
     const {
@@ -240,7 +240,26 @@ export class ConceptService {
         .send({ message: 'Save change fail!' });
     }
   }
-
+  async delete(res, request, body) {
+    const conceptId = body?.conceptId;
+    if (conceptId) {
+      const concept = await this.repository.findOneBy({ conceptId });
+      if (concept) {
+        try {
+          const promisDeleteFile = this.fileConceptService.deleteByConcept(conceptId);
+          const promisDeleteHis = this.historyConceptService.deleteByConcept(conceptId);
+          await Promise.all([promisDeleteFile, promisDeleteHis]);
+          await this.repository.remove(concept);
+          return res.status(HttpStatus.OK).send({ message: 'Delete successful!' })
+        } catch (error) {
+          console.log(error);
+          return res.status(HttpStatus.BAD_REQUEST).send({ message: 'An error occurred during processing!' })
+        }
+      }
+      return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Record not found!' })
+    }
+    return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Id not found!' })
+  }
   async update(res, request, body, files) {
     const data = body?.data;
     const dataObj = JSON.parse(data);

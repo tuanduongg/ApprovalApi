@@ -71,7 +71,7 @@ export class UsersService {
   async public() {
     return await this.repository.find({
       where: {
-        isRoot: false
+        role: { create: true }
       },
       select: {
         fullName: true,

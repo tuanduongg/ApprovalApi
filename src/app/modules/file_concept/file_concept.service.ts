@@ -10,8 +10,32 @@ export class FileConceptService {
   constructor(
     @InjectRepository(FileConcept)
     private repository: Repository<FileConcept>,
-  ) {}
+  ) { }
 
+  async deleteMultipleFile(arrFile: FileConcept[]) {
+    if (arrFile?.length > 0) {
+      try {
+        await this.repository.remove(arrFile);
+        arrFile.map((img) => {
+          const filePath = join(__dirname, '..', 'public', img.fileUrl).replace(
+            'dist\\app\\modules\\',
+            '',
+          );
+          fs.stat(filePath, function (err, stats) {
+            if (err) {
+              return console.error(err);
+            }
+            fs.unlink(filePath, function (err) {
+              if (err) return console.log(err);
+            });
+          });
+        });
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  }
   async delete(arrFileId: any) {
     if (arrFileId?.length > 0) {
       const arrDelete = await this.repository.find({
@@ -33,6 +57,7 @@ export class FileConceptService {
             });
           });
         });
+        return true;
       } catch (error) {
         return null;
       }
@@ -42,12 +67,24 @@ export class FileConceptService {
   async findById(id: number): Promise<FileConcept> {
     return await this.repository.findOneBy({ fileId: id });
   }
-  async findByArrayId(ids: number[]){
+
+  async deleteByConcept(conceptId: number) {
+    const records = await this.repository.find({ where: { concept: { conceptId } } });
+    if (records && records.length > 0) {
+      const deleted = await this.deleteMultipleFile(records);
+      return deleted;
+    }
+    return null;
+  }
+
+  async findByArrayId(ids: number[]) {
     return await this.repository.find({ where: { fileId: In(ids) } });
   }
+
   async all() {
     return await this.repository.find({});
   }
+
   async add(files: any, concept: Concept) {
     if (files && files?.length > 0) {
       const arrFile = [];
