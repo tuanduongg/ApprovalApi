@@ -140,6 +140,7 @@ export class ConceptService {
     const data = await this.repository.findOne({
       where: { conceptId: conceptId },
       relations: ['category', 'files'],
+      order: { files: { ECN: 'DESC' } }
     });
     return res.status(HttpStatus.OK).send(data);
   }
@@ -163,28 +164,60 @@ export class ConceptService {
     const fileID = body?.fileId;
     if (fileID) {
       const file = await this.fileConceptService.findById(fileID);
+
       if (file) {
         const url = file?.fileUrl;
-        const filePath = path
-          .join(__dirname, '..', 'public', `${url}`)
-          .replace('dist\\app\\modules\\', '');
+        const filePath = path.join('./public', url);
+
         if (fs.existsSync(filePath)) {
-          return res
-            .status(HttpStatus.OK)
-            .download(filePath, file?.fileName, (err) => {
-              if (err) {
-                console.error(err);
-                return res.status(500).send('Error downloading file');
-              }
-            });
+          const fileStream = fs.createReadStream(filePath);
+
+          res.set({
+            'Content-Type': 'application/octet-stream',
+            'Content-Disposition': `attachment; filename="${file?.fileName}"`,
+          });
+          res.status(200);
+          fileStream.pipe(res);
+          fileStream.on('error', (err) => {
+            console.error(err);
+            return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send('Error downloading file');
+          });
+          return res;
+        } else {
+          return res.status(HttpStatus.NOT_FOUND).send('File not found');
         }
+      } else {
+        return res.status(HttpStatus.NOT_FOUND).send('File not found');
       }
-      return res.status(404).send('File not found');
     }
-    return res
-      .status(HttpStatus.BAD_REQUEST)
-      .send({ message: 'Cannot found record!' });
+    return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Cannot found record!' });
   }
+  // async download(res, request, body) {
+  //   const fileID = body?.fileId;
+  //   if (fileID) {
+  //     const file = await this.fileConceptService.findById(fileID);
+
+  //     if (file) {
+  //       const url = file?.fileUrl;
+  //       const filePath = path.join('./public',url);
+
+  //       if (fs.existsSync(filePath)) {
+  //         return res
+  //           .status(HttpStatus.OK)
+  //           .download(filePath, file?.fileName, (err) => {
+  //             if (err) {
+  //               console.error(err);
+  //               return res.status(500).send('Error downloading file');
+  //             }
+  //           });
+  //       }
+  //     }
+  //     return res.status(404).send('File not found');
+  //   }
+  //   return res
+  //     .status(HttpStatus.BAD_REQUEST)
+  //     .send({ message: 'Cannot found record!' });
+  // }
   async history(res, request, body) {
     const conceptId = body?.conceptId;
     if (!conceptId) {
@@ -196,8 +229,13 @@ export class ConceptService {
     return res.status(HttpStatus.OK).send(data);
   }
   async add(res, request, body, files) {
+
     const data = body?.data;
     const dataObj = JSON.parse(data);
+
+    const fileList = dataObj?.fileList;
+
+
     const concept = new Concept();
     if (dataObj?.category) {
       concept.category = new CategoryConcept().categoryId = dataObj.category;
@@ -222,19 +260,21 @@ export class ConceptService {
         request,
       );
       if (files && files?.length > 0) {
-        const newFiles = files.map((item: any) => ({
-          filePath: `${item?.path}`.replace('public\\', ''), // Đường dẫn tới tệp nén
+        const newFiles = files.map((item: any, i: number) => ({
+          filePath: item?.urlStoreDB, // Đường dẫn tới tệp nén
           originalName: getFileNameWithoutExtension(
             Buffer.from(item?.originalname, 'latin1').toString('utf8'),
           ), // Tên gốc của tệp
           mimeType: item.mimetype, // Loại MIME của tệp gốc
           size: item.size, // Kích thước của tệp gốc
-          fileExtenstion: getExtenstionFromOriginalName(item?.filename), // Kích thước của tệp nén
+          fileExtenstion: getExtenstionFromOriginalName(item?.filename), // Kích thước của tệp nén,
+          ECN: fileList[i]?.ECN ?? 1
         }));
         await this.fileConceptService.add(newFiles, concept); // Lưu thông tin tệp mới vào cơ sở dữ liệu
       }
       return res.status(HttpStatus.OK).send(concept);
     } catch (error) {
+
       return res
         .status(HttpStatus.BAD_REQUEST)
         .send({ message: 'Save change fail!' });
@@ -270,38 +310,44 @@ export class ConceptService {
     }
     const concept = await this.repository.findOne({
       where: { conceptId: dataObj?.conceptId },
-      relations: ['category'],
+      relations: ['category', 'files'],
     });
+
     if (!concept) {
       return res
         .status(HttpStatus.BAD_REQUEST)
         .send({ message: 'Cannot found Record!' });
     }
     let checkChangeInfor = false;
+    const arrInfoChange = [];
     if (dataObj?.category !== concept?.category?.categoryId) {
+      arrInfoChange.push('Category');
       concept.category = new CategoryConcept().categoryId = dataObj.category;
       checkChangeInfor = true;
     }
     if (concept?.code !== dataObj?.code) {
+      arrInfoChange.push('Code');
       checkChangeInfor = true;
       concept.code = dataObj?.code;
     }
-    if (concept?.modelName !== dataObj?.modelName) {
-      checkChangeInfor = true;
-    }
     if (concept.modelName !== dataObj?.modelName) {
+      arrInfoChange.push('Model');
       checkChangeInfor = true;
       concept.modelName = dataObj?.modelName;
     }
     if (concept.productName !== dataObj?.productName) {
+      arrInfoChange.push('Product name');
+
       checkChangeInfor = true;
       concept.productName = dataObj?.productName;
     }
     if (concept.regisDate !== dataObj?.regisDate) {
+      arrInfoChange.push('Registration Date');
       checkChangeInfor = true;
       concept.regisDate = dataObj?.regisDate;
     }
     if (concept.plName !== dataObj?.plName) {
+      arrInfoChange.push('P/L Name');
       checkChangeInfor = true;
       concept.plName = dataObj?.plName;
     }
@@ -309,23 +355,40 @@ export class ConceptService {
       await this.repository.save(concept);
       const textFile = [];
       const textFileAdd = [];
+      const textFileChangeECN = [];
+      const arrUpdateECN = [];
+      const arrECNFromReq = [];
+
       if (dataObj?.fileList && dataObj?.fileList?.length > 0) {
+
         const fileIdDelete = [];
         dataObj?.fileList.map((item) => {
-          if (!item?.isShow) {
-            fileIdDelete.push(item?.fileId);
+          if (item?.fileId) {
             const buffFileName = Buffer.from(item?.fileName, 'latin1').toString(
               'utf8',
             );
             const fileName = getFileNameWithoutExtension(buffFileName);
-            textFile.push(
-              `${fileName}${item?.fileExtenstion ? `.${item.fileExtenstion}` : ''}`,
-            );
+            if (!item?.isShow) {
+              fileIdDelete.push(item?.fileId);
+              textFile.push(
+                `${fileName}${item?.fileExtenstion ? `.${item.fileExtenstion}` : ''}`,
+              );
+            } else {
+              if (item?.ECN) {
+                const itemFind = concept?.files?.find((fileItem) => (fileItem.fileId === item?.fileId));
+                if (itemFind && (item.ECN != itemFind.ECN)) {
+                  textFileChangeECN.push(`${fileName}${item?.fileExtenstion ? `.${item.fileExtenstion}` : ''}(${itemFind.ECN}->${item.ECN})`)
+                  arrUpdateECN.push({ fileId: itemFind.fileId, ECN: item?.ECN });
+                }
+              }
+            }
+          } else {
+            arrECNFromReq.push(item)
           }
         });
         await this.fileConceptService.delete(fileIdDelete);
       }
-      const newFiles = files.map((item: any) => {
+      const newFiles = files.map((item: any, i: number) => {
         const buffFileName = Buffer.from(item?.originalname, 'latin1').toString(
           'utf8',
         );
@@ -335,25 +398,29 @@ export class ConceptService {
           `${fileName}${extenstionFile ? '.' + extenstionFile : extenstionFile}`,
         );
         return {
-          filePath: `${item?.path}`.replace('public\\', ''), // Đường dẫn tới tệp nén
+          filePath: item?.urlStoreDB, // Đường dẫn tới tệp nén
           originalName: fileName, // Tên gốc của tệp
           mimeType: item.mimetype, // Loại MIME của tệp gốc
           size: item.size, // Kích thước của tệp gốc
           fileExtenstion: extenstionFile, // Kích thước của tệp nén
+          ECN: arrECNFromReq[i]?.ECN ?? 1
         };
       });
-      await this.fileConceptService.add(newFiles, concept); // Lưu thông tin tệp mới vào cơ sở dữ liệu
+      const promissUpdateENC = this.fileConceptService.updateENC(arrUpdateECN);
+      const promissAddNewFile = this.fileConceptService.add(newFiles, concept); // Lưu thông tin tệp mới vào cơ sở dữ liệu
+      await Promise.all([promissAddNewFile, promissUpdateENC]);
       await this.historyConceptService.add(
         concept,
         {
           type: 'UPDATE',
-          historyRemark: `${checkChangeInfor ? ` - Update infomation` : ''}${textFile?.length > 0 ? ` - Delete File: ${textFile.join(' ,')}` : ''} ${textFileAdd?.length > 0 ? ` - Add File:${textFileAdd.join(' ,')}` : ''}`,
+          historyRemark: `${checkChangeInfor ? ` - Update infomation: ${arrInfoChange.join(', ')}` : ''}${textFile?.length > 0 ? ` - Delete File: ${textFile.join(', ')}` : ''} ${textFileAdd?.length > 0 ? ` - Add File:${textFileAdd.join(', ')}` : ''}${textFileChangeECN?.length > 0 ? ` - Change ECN:${textFileChangeECN.join(', ')}` : ''}`,
         },
         request,
       );
       return res.status(HttpStatus.OK).send(concept);
     } catch (error) {
-      console.log('error', error);
+      console.log(error);
+
       return res
         .status(HttpStatus.BAD_REQUEST)
         .send({ message: 'Save change fail!' });

@@ -77,6 +77,18 @@ export class FileConceptService {
     return null;
   }
 
+  async updateENC(ids: any[]) {
+    // [
+    //   {
+    //     fileId:1,
+    //     ECN:2
+    //   }
+    // ]
+    if (ids?.length > 0) {
+      return await this.repository.save(ids);
+    }
+    return null;
+  }
   async findByArrayId(ids: number[]) {
     return await this.repository.find({ where: { fileId: In(ids) } });
   }
@@ -95,6 +107,7 @@ export class FileConceptService {
         fileNew.fileSize = file?.size;
         fileNew.fileUrl = file?.filePath;
         fileNew.fileExtenstion = file?.fileExtenstion;
+        fileNew.ECN = file?.ECN ?? 1;
         fileNew.uploadAt = new Date();
         arrFile.push(fileNew);
       });

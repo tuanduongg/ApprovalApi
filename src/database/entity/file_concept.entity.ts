@@ -15,16 +15,19 @@ export class FileConcept {
   @Column({ nullable: true })
   fileName: string;
 
-  
+
   @Column({ nullable: true })
   fileExtenstion: string;
-  
+
   @Column({ nullable: true })
   fileSize: number;
-  
+
   @Column({ nullable: true })
   fileUrl: string;
 
+  @Column({ nullable: true, default: 1 })
+  ECN: number;
+  
   @Column({ nullable: true })
   uploadAt: Date;
 

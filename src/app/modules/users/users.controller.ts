@@ -68,5 +68,11 @@ export class UserController {
         return await this.service.update(body,request,res);
     }
 
+    @UseGuards(AuthGuard)
+    @Get('/get-storage')
+    async getStorage(@Res() res: Response) {
+        return await this.service.getStorage(res);
+    }
+
 
 }

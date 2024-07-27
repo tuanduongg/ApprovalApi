@@ -56,7 +56,7 @@ import { join } from 'path';
           },
         };
         const connection = await createConnection(connectionOptions);
-        console.log('Connected to the database', connection.options.database);
+        console.log(`Connected to the database:${connection.options.database}:${connectionOptions.username}-${connectionOptions.host}:${connectionOptions.port}`);
         return connectionOptions;
       },
     } as TypeOrmModuleAsyncOptions),

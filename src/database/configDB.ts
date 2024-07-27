@@ -1,11 +1,16 @@
 export const ConfigDB = {
-    // host: '113.160.154.39', //deploy
-    host: 'localhost', //office
-    // host: 'TUANIT-PC\\SQLEXPRESS', //office
-    port: 1433,
-    // port: 4343, //deploy
     username: `sa`,
-    // password: 'JHcos@123@123', //deplay
-    password: '1234',
+    host: '113.160.154.39', //deploy
+    port: 4343, //deploy
+    password: 'JHcos@123@123', //deplay
+
+    // host: 'TUANIT-PC\\SQLEXPRESS', //office
+
+    // host: 'localhost', //security
+    // port: 1433,
+    // username: `sa`,
+    // password: '1234',
+
+
     database: 'RND',
 }
