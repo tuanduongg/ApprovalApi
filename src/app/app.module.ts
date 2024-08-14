@@ -22,9 +22,11 @@ import { join } from 'path';
 @Module({
   imports: [
     ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'public'),
+      rootPath: join(__dirname, '..','public'),
     }),
-    ConfigModule.forRoot(),
+    ConfigModule.forRoot({
+      isGlobal: true
+    }),
     TypeOrmModule.forRootAsync({
       useFactory: async (): Promise<ConnectionOptions> => {
         const connectionOptions: ConnectionOptions = {
@@ -37,6 +39,7 @@ import { join } from 'path';
           options: {
             trustServerCertificate: true,
             enableArithAbort: true,
+            encrypt: false,
           }, //for mssql
           entities: [
             User,
@@ -56,7 +59,9 @@ import { join } from 'path';
           },
         };
         const connection = await createConnection(connectionOptions);
-        console.log(`Connected to the database:${connection.options.database}:${connectionOptions.username}-${connectionOptions.host}:${connectionOptions.port}`);
+        console.log(
+          `Connected to the database:${connection.options.database}:${connectionOptions.username}-${connectionOptions.host}:${connectionOptions.port}`,
+        );
         return connectionOptions;
       },
     } as TypeOrmModuleAsyncOptions),

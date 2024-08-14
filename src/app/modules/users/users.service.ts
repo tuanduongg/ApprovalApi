@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { comparePasswords, hashPassword } from 'src/core/utils/helper';
 import { Role } from 'src/database/entity/role.entity';
 import { User } from 'src/database/entity/user.entity';
-import { ILike, Repository } from 'typeorm';
+import { ILike, Like, Repository } from 'typeorm';
 import * as path from 'path';
 import { readdir, stat } from 'fs/promises';
 
@@ -12,14 +12,14 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private repository: Repository<User>,
-  ) { }
+  ) {}
 
   async findOne(username: string): Promise<User> {
     const user = await this.repository.findOne({
       where: {
         userName: username,
       },
-      relations: ['role']
+      relations: ['role'],
     });
     return user;
   }
@@ -73,7 +73,7 @@ export class UsersService {
   async public() {
     return await this.repository.find({
       where: {
-        role: { create: true }
+        role: { create: true },
       },
       select: {
         fullName: true,
@@ -86,8 +86,17 @@ export class UsersService {
       relations: ['role'],
     });
   }
-  async all() {
-    return await this.repository.find({
+  async all(request, body, res) {
+    const search = body?.search;
+    const data = await this.repository.find({
+      where: [
+        {
+          userName: Like(`%${search}%`),
+        },
+        {
+          fullName: Like(`%${search}%`),
+        },
+      ],
       select: {
         fullName: true,
         userId: true,
@@ -99,6 +108,7 @@ export class UsersService {
       },
       relations: ['role'],
     });
+    return res?.status(200).send(data);
   }
   async checkRole(body, request, res) {
     const user = await this.repository.findOne({
@@ -169,13 +179,13 @@ export class UsersService {
     });
   }
   async getStorage(res) {
-    const size = await this.dirSize('./public');
-    return res.status(HttpStatus.OK).send({ size })
+    const size = await this.dirSize(process.env.UPLOAD_FOLDER || './public');
+    return res.status(HttpStatus.OK).send({ size });
   }
   async dirSize(dir) {
     const files = await readdir(dir, { withFileTypes: true });
 
-    const paths = files.map(async file => {
+    const paths = files.map(async (file) => {
       const pathFile = path.join(dir, file.name);
 
       if (file.isDirectory()) return await this.dirSize(pathFile);
@@ -189,6 +199,8 @@ export class UsersService {
       return 0;
     });
 
-    return (await Promise.all(paths)).flat(Infinity).reduce((i, size) => i + size, 0);
+    return (await Promise.all(paths))
+      .flat(Infinity)
+      .reduce((i, size) => i + size, 0);
   }
 }

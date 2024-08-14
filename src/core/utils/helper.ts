@@ -30,16 +30,25 @@ export const randomFileName = Array(32)
   .fill(null)
   .map(() => Math.round(Math.random() * 16).toString(16))
   .join('');
-  
+
 export function getExtenstionFromOriginalName(originalname: string): string {
-  return originalname?.includes('.')
-  ? originalname.split('.').pop()
-  : '';
+  return originalname?.includes('.') ? originalname.split('.').pop() : '';
 }
 export function getFileNameWithoutExtension(originalname: string): string {
-  if(originalname?.includes('.')) {
-
+  if (originalname?.includes('.')) {
     return originalname.substring(0, originalname.lastIndexOf('.'));
   }
   return originalname;
+}
+
+//2024-07-31T17:00:00.000Z -> 2024-07-31T23:59:00.000Z
+export function convertToEndOfDay(dateString: string) {
+  // Tạo một đối tượng Date từ chuỗi thời gian
+  const date = new Date(dateString);
+
+  // Đặt thời gian là 23:59:00.000
+  date.setUTCHours(23, 59, 0, 0);
+
+  // Trả về chuỗi thời gian mới theo định dạng ISO
+  return date.toISOString();
 }

@@ -11,10 +11,12 @@ async function bootstrap() {
     bodyParser: true,
     rawBody: true,
   });
-  app.useStaticAssets(join(__dirname, '..', 'public'));
+  const configService = app.get(ConfigService);
+  const folderUpload = 'public';
+  app.useStaticAssets(join(__dirname, '..', folderUpload));
+  app.enableCors();
   app.setGlobalPrefix('api');
   app.use(cookieParser());
-  app.enableCors();
   app.use(
     compression({
       filter: () => {
@@ -24,9 +26,9 @@ async function bootstrap() {
     }),
   );
 
-  const configService = app.get(ConfigService);
   const PORT = configService.get('PORT') || 5005;
   await app.listen(PORT);
+  console.log('V.09.08.24');
   console.log('app start at port ' + PORT);
 }
 bootstrap();

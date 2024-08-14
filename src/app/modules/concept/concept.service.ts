@@ -23,7 +23,7 @@ export class ConceptService {
     private repository: Repository<Concept>,
     private readonly fileConceptService: FileConceptService,
     private readonly historyConceptService: HistoryConceptService,
-  ) { }
+  ) {}
 
   async all(res, request, body) {
     const {
@@ -44,10 +44,10 @@ export class ConceptService {
 
     const whereOBJ = {
       regisDate: Between(startDate, endDate),
-      code: Like(`%${codeFilter}%`),
-      plName: Like(`%${plNameFilter}%`),
-      modelName: Like(`%${modelFilter}%`),
-      productName: Like(`%${productNameFilter}%`),
+      code: Like(`%${codeFilter?.trim()}%`),
+      plName: Like(`%${plNameFilter?.trim()}%`),
+      modelName: Like(`%${modelFilter?.trim()}%`),
+      productName: Like(`%${productNameFilter?.trim()}%`),
       category: { categoryId: In(categoryFilter) },
       user: { userId: In(personName) },
     };
@@ -84,7 +84,7 @@ export class ConceptService {
       relations: ['category', 'user'],
       skip: skip,
       take: take,
-      order: { regisDate: 'ASC' },
+      order: { regisDate: 'DESC' },
     });
     const newData = data.map((item) => ({
       ...item,
@@ -140,7 +140,7 @@ export class ConceptService {
     const data = await this.repository.findOne({
       where: { conceptId: conceptId },
       relations: ['category', 'files'],
-      order: { files: { ECN: 'DESC' } }
+      order: { files: { ECN: 'DESC' } },
     });
     return res.status(HttpStatus.OK).send(data);
   }
@@ -167,20 +167,25 @@ export class ConceptService {
 
       if (file) {
         const url = file?.fileUrl;
-        const filePath = path.join('./public', url);
+        const filePath = path.join(
+          process.env.UPLOAD_FOLDER || './public',
+          url,
+        );
 
         if (fs.existsSync(filePath)) {
           const fileStream = fs.createReadStream(filePath);
 
           res.set({
             'Content-Type': 'application/octet-stream',
-            'Content-Disposition': `attachment; filename="${file?.fileName}"`,
+            'Content-Disposition': `attachment; filename="${encodeURI(file?.fileName)}"`,
           });
           res.status(200);
           fileStream.pipe(res);
           fileStream.on('error', (err) => {
-            console.error(err);
-            return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send('Error downloading file');
+            console.error('Error downloading file', err);
+            return res
+              .status(HttpStatus.INTERNAL_SERVER_ERROR)
+              .send('Error downloading file');
           });
           return res;
         } else {
@@ -190,7 +195,9 @@ export class ConceptService {
         return res.status(HttpStatus.NOT_FOUND).send('File not found');
       }
     }
-    return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Cannot found record!' });
+    return res
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ message: 'Cannot found record!' });
   }
   // async download(res, request, body) {
   //   const fileID = body?.fileId;
@@ -229,18 +236,28 @@ export class ConceptService {
     return res.status(HttpStatus.OK).send(data);
   }
   async add(res, request, body, files) {
-
+    
     const data = body?.data;
     const dataObj = JSON.parse(data);
 
     const fileList = dataObj?.fileList;
 
-
     const concept = new Concept();
     if (dataObj?.category) {
       concept.category = new CategoryConcept().categoryId = dataObj.category;
     }
-    concept.code = dataObj?.code;
+
+    if (dataObj?.code) {
+      const codeStr = `${dataObj?.code}`.trim();
+      const checkCode = await this.repository.findOneBy({ code: codeStr });
+      if (checkCode) {
+        this.fileConceptService.deleteUploadedFiles(files);
+        return res
+          .status(HttpStatus.BAD_REQUEST)
+          .send({ message: 'Code already exists !' });
+      }
+      concept.code = dataObj?.code;
+    }
     concept.modelName = dataObj?.modelName;
     concept.productName = dataObj?.productName;
     concept.regisDate = dataObj?.regisDate;
@@ -268,13 +285,13 @@ export class ConceptService {
           mimeType: item.mimetype, // Loại MIME của tệp gốc
           size: item.size, // Kích thước của tệp gốc
           fileExtenstion: getExtenstionFromOriginalName(item?.filename), // Kích thước của tệp nén,
-          ECN: fileList[i]?.ECN ?? 1
+          ECN: fileList[i]?.ECN ?? 1,
         }));
         await this.fileConceptService.add(newFiles, concept); // Lưu thông tin tệp mới vào cơ sở dữ liệu
       }
       return res.status(HttpStatus.OK).send(concept);
     } catch (error) {
-
+      this.fileConceptService.deleteUploadedFiles(files);
       return res
         .status(HttpStatus.BAD_REQUEST)
         .send({ message: 'Save change fail!' });
@@ -286,34 +303,50 @@ export class ConceptService {
       const concept = await this.repository.findOneBy({ conceptId });
       if (concept) {
         try {
-          const promisDeleteFile = this.fileConceptService.deleteByConcept(conceptId);
-          const promisDeleteHis = this.historyConceptService.deleteByConcept(conceptId);
+          const promisDeleteFile =
+            this.fileConceptService.deleteByConcept(conceptId);
+          const promisDeleteHis =
+            this.historyConceptService.deleteByConcept(conceptId);
           await Promise.all([promisDeleteFile, promisDeleteHis]);
           await this.repository.remove(concept);
-          return res.status(HttpStatus.OK).send({ message: 'Delete successful!' })
+          return res
+            .status(HttpStatus.OK)
+            .send({ message: 'Delete successful!' });
         } catch (error) {
           console.log(error);
-          return res.status(HttpStatus.BAD_REQUEST).send({ message: 'An error occurred during processing!' })
+          return res
+            .status(HttpStatus.BAD_REQUEST)
+            .send({ message: 'An error occurred during processing!' });
         }
       }
-      return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Record not found!' })
+      return res
+        .status(HttpStatus.BAD_REQUEST)
+        .send({ message: 'Record not found!' });
     }
-    return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Id not found!' })
+    return res
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ message: 'Id not found!' });
   }
   async update(res, request, body, files) {
+
     const data = body?.data;
     const dataObj = JSON.parse(data);
     if (!dataObj?.conceptId) {
+      this.fileConceptService.deleteUploadedFiles(files);
       return res
         .status(HttpStatus.BAD_REQUEST)
         .send({ message: 'Cannot found ID!' });
     }
+    const codeStr = `${dataObj?.code}`.trim();
+    const checkCode = await this.repository.findOneBy({ code: codeStr });
+    
     const concept = await this.repository.findOne({
       where: { conceptId: dataObj?.conceptId },
       relations: ['category', 'files'],
     });
 
     if (!concept) {
+      this.fileConceptService.deleteUploadedFiles(files);
       return res
         .status(HttpStatus.BAD_REQUEST)
         .send({ message: 'Cannot found Record!' });
@@ -326,6 +359,12 @@ export class ConceptService {
       checkChangeInfor = true;
     }
     if (concept?.code !== dataObj?.code) {
+      if (checkCode) {
+        this.fileConceptService.deleteUploadedFiles(files);
+        return res
+          .status(HttpStatus.BAD_REQUEST)
+          .send({ message: 'Code already exists !' });
+      }
       arrInfoChange.push('Code');
       checkChangeInfor = true;
       concept.code = dataObj?.code;
@@ -360,7 +399,6 @@ export class ConceptService {
       const arrECNFromReq = [];
 
       if (dataObj?.fileList && dataObj?.fileList?.length > 0) {
-
         const fileIdDelete = [];
         dataObj?.fileList.map((item) => {
           if (item?.fileId) {
@@ -375,15 +413,22 @@ export class ConceptService {
               );
             } else {
               if (item?.ECN) {
-                const itemFind = concept?.files?.find((fileItem) => (fileItem.fileId === item?.fileId));
-                if (itemFind && (item.ECN != itemFind.ECN)) {
-                  textFileChangeECN.push(`${fileName}${item?.fileExtenstion ? `.${item.fileExtenstion}` : ''}(${itemFind.ECN}->${item.ECN})`)
-                  arrUpdateECN.push({ fileId: itemFind.fileId, ECN: item?.ECN });
+                const itemFind = concept?.files?.find(
+                  (fileItem) => fileItem.fileId === item?.fileId,
+                );
+                if (itemFind && item.ECN != itemFind.ECN) {
+                  textFileChangeECN.push(
+                    `${fileName}${item?.fileExtenstion ? `.${item.fileExtenstion}` : ''}(${itemFind.ECN}->${item.ECN})`,
+                  );
+                  arrUpdateECN.push({
+                    fileId: itemFind.fileId,
+                    ECN: item?.ECN,
+                  });
                 }
               }
             }
           } else {
-            arrECNFromReq.push(item)
+            arrECNFromReq.push(item);
           }
         });
         await this.fileConceptService.delete(fileIdDelete);
@@ -403,7 +448,7 @@ export class ConceptService {
           mimeType: item.mimetype, // Loại MIME của tệp gốc
           size: item.size, // Kích thước của tệp gốc
           fileExtenstion: extenstionFile, // Kích thước của tệp nén
-          ECN: arrECNFromReq[i]?.ECN ?? 1
+          ECN: arrECNFromReq[i]?.ECN ?? 1,
         };
       });
       const promissUpdateENC = this.fileConceptService.updateENC(arrUpdateECN);
@@ -420,7 +465,7 @@ export class ConceptService {
       return res.status(HttpStatus.OK).send(concept);
     } catch (error) {
       console.log(error);
-
+      this.fileConceptService.deleteUploadedFiles(files);
       return res
         .status(HttpStatus.BAD_REQUEST)
         .send({ message: 'Save change fail!' });
@@ -437,7 +482,10 @@ export class ConceptService {
       const currentDate = new Date();
       const folderName = `${convertToDigits(currentDate.getDate())}${convertToDigits(currentDate.getMonth() + 1)}${currentDate.getFullYear()}`;
       const folder = 'uploads' + `/${folderName}`;
-      const uploadDir = path.join('./public', folder);
+      const uploadDir = path.join(
+        process.env.UPLOAD_FOLDER || './public',
+        folder,
+      );
       if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true }); // Tạo thư mục nếu chưa tồn tại
       }
@@ -496,7 +544,12 @@ export class ConceptService {
     files.forEach((file) => {
       const url = file?.fileUrl;
       const filePath = path
-        .join(__dirname, '..', 'public', `${url}`)
+        .join(
+          __dirname,
+          '..',
+          process.env.UPLOAD_FOLDER || './public',
+          `${url}`,
+        )
         .replace('dist\\app\\modules\\', '');
       archive.file(filePath, {
         name: `${file?.fileName + '.' + file?.fileExtenstion}`,

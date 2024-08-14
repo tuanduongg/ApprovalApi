@@ -10,16 +10,16 @@ export class FileConceptService {
   constructor(
     @InjectRepository(FileConcept)
     private repository: Repository<FileConcept>,
-  ) { }
+  ) {}
 
   async deleteMultipleFile(arrFile: FileConcept[]) {
     if (arrFile?.length > 0) {
       try {
         await this.repository.remove(arrFile);
         arrFile.map((img) => {
-          const filePath = join(__dirname, '..', 'public', img.fileUrl).replace(
-            'dist\\app\\modules\\',
-            '',
+          const filePath = join(
+            process.env.UPLOAD_FOLDER || './public',
+            img.fileUrl,
           );
           fs.stat(filePath, function (err, stats) {
             if (err) {
@@ -44,9 +44,9 @@ export class FileConceptService {
       try {
         await this.repository.remove(arrDelete);
         arrDelete.map((img) => {
-          const filePath = join(__dirname, '..', 'public', img.fileUrl).replace(
-            'dist\\app\\modules\\',
-            '',
+          const filePath = join(
+            process.env.UPLOAD_FOLDER || './public',
+            img.fileUrl,
           );
           fs.stat(filePath, function (err, stats) {
             if (err) {
@@ -69,7 +69,9 @@ export class FileConceptService {
   }
 
   async deleteByConcept(conceptId: number) {
-    const records = await this.repository.find({ where: { concept: { conceptId } } });
+    const records = await this.repository.find({
+      where: { concept: { conceptId } },
+    });
     if (records && records.length > 0) {
       const deleted = await this.deleteMultipleFile(records);
       return deleted;
@@ -115,5 +117,19 @@ export class FileConceptService {
       return saved;
     }
     return null;
+  }
+
+  deleteUploadedFiles(files: any[]): void {
+    for (const file of files) {
+      try {
+        const filePath = join(
+          process.env.UPLOAD_FOLDER || './public',
+          file.urlStoreDB,
+        );
+        fs.unlinkSync(filePath); // Xóa file theo đường dẫn
+      } catch (err) {
+        console.error(`Error deleting file: ${file.path}`, err);
+      }
+    }
   }
 }

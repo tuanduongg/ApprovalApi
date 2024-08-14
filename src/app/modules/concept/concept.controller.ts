@@ -41,7 +41,6 @@ export class ConceptController {
   @UseInterceptors(FilesInterceptor('files', 30, {
     storage: diskStorage({
       destination: (req, file, cb) => {
-        console.log('file',file);
         
         cb(null, '');
       },
@@ -73,7 +72,7 @@ export class ConceptController {
         const month = String(now.getMonth() + 1).padStart(2, '0'); // Tháng bắt đầu từ 0
         const day = String(now.getDate()).padStart(2, '0');
         const folderUpload = path.join('uploads', `${day}${month}${year}`);
-        const uploadPath = path.join('./public', folderUpload);
+        const uploadPath = path.join(process.env.UPLOAD_FOLDER || './public', folderUpload);
         // Tạo thư mục nếu chưa tồn tại
         fs.mkdirSync(uploadPath, { recursive: true });
 
