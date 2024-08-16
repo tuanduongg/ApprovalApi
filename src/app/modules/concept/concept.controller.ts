@@ -18,24 +18,14 @@ import { diskStorage } from 'multer';
 import * as path from 'path';
 
 import * as fs from 'fs';
+import { StorageGuard } from 'src/core/guards/storage.guard';
 
 
 @Controller('concept')
 export class ConceptController {
   constructor(private service: ConceptService) { }
 
-  // @UseGuards(AuthGuard)
-  // @Post('/add')
-  // // @UseInterceptors(FilesInterceptor('files'))
-  // @UseInterceptors(FilesInterceptor('files', 30, multerOptions))
-  // async add(
-  //   @Res() res: Response,
-  //   @Req() request: Request,
-  //   @Body() body,
-  //   @UploadedFiles() files: Express.Multer.File[],
-  // ) {
-  //   return await this.service.add(res, request, body, files);
-  // }
+  @UseGuards(StorageGuard)
   @UseGuards(AuthGuard)
   @Post('/add')
   @UseInterceptors(FilesInterceptor('files', 30, {
@@ -49,6 +39,7 @@ export class ConceptController {
       },
     }),
   }))
+
   async add(
     @Res() res: Response,
     @Req() request: Request,
@@ -134,6 +125,7 @@ export class ConceptController {
     return arrFile;
   }
 
+  @UseGuards(StorageGuard)
   @UseGuards(AuthGuard)
   @Post('/update')
   @UseInterceptors(FilesInterceptor('files', 30, {
@@ -157,6 +149,7 @@ export class ConceptController {
     return await this.service.update(res, request, body, arrFile);
   }
 
+  
   @UseGuards(AuthGuard)
   @Post('/detail')
   async detail(@Res() res: Response, @Req() request: Request, @Body() body) {

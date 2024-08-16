@@ -1,11 +1,9 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { comparePasswords, hashPassword } from 'src/core/utils/helper';
+import { comparePasswords, dirSize, hashPassword } from 'src/core/utils/helper';
 import { Role } from 'src/database/entity/role.entity';
 import { User } from 'src/database/entity/user.entity';
 import { ILike, Like, Repository } from 'typeorm';
-import * as path from 'path';
-import { readdir, stat } from 'fs/promises';
 
 @Injectable()
 export class UsersService {
@@ -179,28 +177,8 @@ export class UsersService {
     });
   }
   async getStorage(res) {
-    const size = await this.dirSize(process.env.UPLOAD_FOLDER || './public');
+    const size = await dirSize(process.env.UPLOAD_FOLDER || './public');
     return res.status(HttpStatus.OK).send({ size });
   }
-  async dirSize(dir) {
-    const files = await readdir(dir, { withFileTypes: true });
-
-    const paths = files.map(async (file) => {
-      const pathFile = path.join(dir, file.name);
-
-      if (file.isDirectory()) return await this.dirSize(pathFile);
-
-      if (file.isFile()) {
-        const { size } = await stat(pathFile);
-
-        return size;
-      }
-
-      return 0;
-    });
-
-    return (await Promise.all(paths))
-      .flat(Infinity)
-      .reduce((i, size) => i + size, 0);
-  }
+  
 }

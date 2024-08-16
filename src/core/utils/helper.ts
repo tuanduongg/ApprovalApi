@@ -1,5 +1,11 @@
 import * as bcrypt from 'bcrypt';
+import { readdir, stat } from 'fs/promises';
+import * as path from 'path';
+
+
+
 const SALTROUNDS = 10;
+
 export const hashPassword = async (password: string): Promise<string> => {
   return bcrypt.hash(password, SALTROUNDS);
 };
@@ -51,4 +57,25 @@ export function convertToEndOfDay(dateString: string) {
 
   // Trả về chuỗi thời gian mới theo định dạng ISO
   return date.toISOString();
+}
+export const dirSize = async (dir) => {
+  const files = await readdir(dir, { withFileTypes: true });
+
+  const paths = files.map(async (file) => {
+    const pathFile = path.join(dir, file.name);
+
+    if (file.isDirectory()) return await dirSize(pathFile);
+
+    if (file.isFile()) {
+      const { size } = await stat(pathFile);
+
+      return size;
+    }
+
+    return 0;
+  });
+
+  return (await Promise.all(paths))
+    .flat(Infinity)
+    .reduce((i, size) => i + size, 0);
 }
