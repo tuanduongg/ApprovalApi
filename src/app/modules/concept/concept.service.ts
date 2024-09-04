@@ -225,6 +225,32 @@ export class ConceptService {
   //     .status(HttpStatus.BAD_REQUEST)
   //     .send({ message: 'Cannot found record!' });
   // }
+  async findByCode(res, request, body) {
+    const code = body?.code;
+    if (code) {
+      const data = await this.repository.findOne({
+        select: {
+          conceptId:true,
+          modelName: true,
+          plName: true,
+          productName: true,
+          category: {
+            categoryId: true,
+            categoryName: true,
+          },
+        },
+        relations: ['category'],
+        where: { code },
+      });
+      if (data) {
+        return res.status(HttpStatus.OK).send(data);
+      }
+    }
+    return res
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ message: 'Cannot found Code!' });
+  }
+
   async history(res, request, body) {
     const conceptId = body?.conceptId;
     if (!conceptId) {
@@ -236,7 +262,6 @@ export class ConceptService {
     return res.status(HttpStatus.OK).send(data);
   }
   async add(res, request, body, files) {
-    
     const data = body?.data;
     const dataObj = JSON.parse(data);
 
@@ -328,7 +353,6 @@ export class ConceptService {
       .send({ message: 'Id not found!' });
   }
   async update(res, request, body, files) {
-
     const data = body?.data;
     const dataObj = JSON.parse(data);
     if (!dataObj?.conceptId) {
@@ -339,7 +363,7 @@ export class ConceptService {
     }
     const codeStr = `${dataObj?.code}`.trim();
     const checkCode = await this.repository.findOneBy({ code: codeStr });
-    
+
     const concept = await this.repository.findOne({
       where: { conceptId: dataObj?.conceptId },
       relations: ['category', 'files'],

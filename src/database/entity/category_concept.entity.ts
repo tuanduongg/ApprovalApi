@@ -1,10 +1,6 @@
-import {
-  Entity,
-  Column,
-  PrimaryGeneratedColumn,
-  OneToMany,
-} from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
 import { Concept } from './concept.entity';
+import { ReportQC } from './report_qc.entity';
 
 @Entity()
 export class CategoryConcept {
@@ -16,4 +12,7 @@ export class CategoryConcept {
 
   @OneToMany(() => Concept, (ref) => ref.category)
   concepts: Concept[];
+
+  @OneToMany(() => ReportQC, (ref) => ref.category)
+  reportQC: ReportQC[];
 }

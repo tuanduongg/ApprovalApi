@@ -21,12 +21,23 @@ export const multerOptions = {
     },
     filename: (req, file, cb) => {
       const uniqueSuffix = Array(32)
-      .fill(null)
-      .map(() => Math.round(Math.random() * 16).toString(16))
-      .join('');
+        .fill(null)
+        .map(() => Math.round(Math.random() * 16).toString(16))
+        .join('');
       const extension = getExtenstionFromOriginalName(file.originalname);
       const fileName = `${uniqueSuffix}${extension ? '.' + extension : ''}`;
       cb(null, fileName);
+    },
+  }),
+};
+
+export const multerOptionConcept = {
+  storage: diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, '');
+    },
+    filename: (req, file, cb) => {
+      cb(null, file.originalname);
     },
   }),
 };

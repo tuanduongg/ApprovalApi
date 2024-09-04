@@ -18,14 +18,24 @@ import { RoleModule } from './modules/role/role.module';
 import { ConceptModule } from './modules/concept/concept.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { ProcessQC } from 'src/database/entity/process_qc.entity';
+import { ReportQC } from 'src/database/entity/report_qc.entity';
+import { FileReportQC } from 'src/database/entity/file_reportQC.entity';
+import { ProcessQCModule } from './modules/process_qc/process_qc.module';
+import { ReportQCModule } from './modules/report_qc/report_qc.module';
+import { FileReportQCModule } from './modules/file_reportQC/file_reportQC.module';
+import { JIGModule } from './modules/jig/jig.module';
+import { JIG } from 'src/database/entity/jig.entity';
+import { InOutJIG } from 'src/database/entity/inout_jig.entity';
+import { InOutJIGModule } from './modules/intout_jig/inout_jig.module';
 
 @Module({
   imports: [
     ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..','public'),
+      rootPath: join(__dirname, '..', 'public'),
     }),
     ConfigModule.forRoot({
-      isGlobal: true
+      isGlobal: true,
     }),
     TypeOrmModule.forRootAsync({
       useFactory: async (): Promise<ConnectionOptions> => {
@@ -48,6 +58,11 @@ import { join } from 'path';
             Concept,
             HistoryConcept,
             FileConcept,
+            ProcessQC,
+            ReportQC,
+            FileReportQC,
+            JIG,
+            InOutJIG,
           ],
           requestTimeout: 30000, //for mssql
           synchronize: true,
@@ -70,6 +85,11 @@ import { join } from 'path';
     CategoryConceptModule,
     RoleModule,
     ConceptModule,
+    ProcessQCModule,
+    ReportQCModule,
+    FileReportQCModule,
+    JIGModule,
+    InOutJIGModule
   ],
   controllers: [AppController],
   providers: [AppService],

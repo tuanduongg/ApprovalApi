@@ -2,7 +2,7 @@ import * as bcrypt from 'bcrypt';
 import { readdir, stat } from 'fs/promises';
 import * as path from 'path';
 
-
+import * as fs from 'fs';
 
 const SALTROUNDS = 10;
 
@@ -78,4 +78,94 @@ export const dirSize = async (dir) => {
   return (await Promise.all(paths))
     .flat(Infinity)
     .reduce((i, size) => i + size, 0);
-}
+};
+
+export const handleFiles = async (
+  files: Express.Multer.File[],
+  folderName: string = '',
+) => {
+  if (!files || files?.length <= 0) {
+    return [];
+  }
+  console.log('arrFile', files);
+
+  const arrFile = files.map((file) => {
+    if (file) {
+      try {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0'); // Tháng bắt đầu từ 0
+        const day = String(now.getDate()).padStart(2, '0');
+        const folderUpload = path.join(
+          folderName ? folderName : 'uploads',
+          `${day}${month}${year}`,
+        );
+        const uploadPath = path.join(
+          process.env.UPLOAD_FOLDER || './public',
+          folderUpload,
+        );
+        // Tạo thư mục nếu chưa tồn tại
+        fs.mkdirSync(uploadPath, { recursive: true });
+
+        const uniqueSuffix = Array(32)
+          .fill(null)
+          .map(() => Math.round(Math.random() * 16).toString(16))
+          .join('');
+        const extension = getExtenstionFromOriginalName(file?.originalname);
+        const fileName = `${uniqueSuffix}${extension ? '.' + extension : ''}`;
+        const urlStoreDB = path.join(folderUpload, fileName);
+        const targetPath = path.join(uploadPath, fileName);
+
+        const readableStream = fs.createReadStream(file?.path);
+        const writableStream = fs.createWriteStream(targetPath);
+
+        readableStream.pipe(writableStream);
+
+        readableStream.on('error', (error) => {
+          console.error('Error reading file:', error);
+          fs.stat(file?.path, function (err, stats) {
+            if (err) {
+              return console.error(err);
+            }
+            fs.unlinkSync(file?.path); // Xóa tệp tạm thời nếu có lỗi
+          });
+        });
+
+        writableStream.on('error', (error) => {
+          console.error('Error writing file:', error);
+          fs.stat(file?.path, function (err, stats) {
+            if (err) {
+              return console.error(err);
+            }
+            fs.unlinkSync(file?.path); // Xóa tệp tạm thời nếu có lỗi
+          });
+          fs.stat(file?.path, function (err, stats) {
+            if (err) {
+              return console.error(err);
+            }
+            fs.unlinkSync(targetPath); // Xóa tệp đích nếu có lỗi
+          });
+        });
+
+        writableStream.on('finish', () => {
+          fs.stat(file?.path, function (err, stats) {
+            if (err) {
+              return console.error(err);
+            }
+            fs.unlinkSync(file?.path); // Xóa tệp tạm thời khi barn ghi hoan tat
+          });
+        });
+        return { ...file, urlStoreDB };
+      } catch (error) {
+        console.error('Error handling file:', error);
+        throw error;
+      }
+    }
+  });
+  return arrFile;
+};
+
+// const getExtenstionFromOriginalName = (originalname: string) => {
+//   const ext = originalname.split('.').pop();
+//   return ext ? ext : '';
+// };
