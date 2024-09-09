@@ -16,7 +16,7 @@ export class ReportQCService {
     private repository: Repository<ReportQC>,
     private readonly processQCService: ProcessQCService,
     private readonly fileReportQCService: FileReportQCService,
-  ) {}
+  ) { }
 
   async add(res, request, body, arrFile = [], arrImage = []) {
     const dataString = body?.data;
@@ -102,8 +102,8 @@ export class ReportQCService {
     const imagesDelete = dataObj?.imagesDelete;
     const filesDelete = dataObj?.filesDelete;
     const listFileAdd = arrFile.concat(arrImage);
-    console.log('arrFile 105',arrFile);
-    
+    console.log('arrFile 105', arrFile);
+
 
     const {
       shift,
@@ -222,8 +222,13 @@ export class ReportQCService {
 
   async all(res, request, body) {
     const search = body?.search;
+    const page = body?.page;
+    const rowsPerPage = body?.rowsPerPage;
+    const take = +rowsPerPage || 10;
+    const newPage = +page || 0;
+    const skip = newPage * take;
 
-    const data = await this.repository.find({
+    const [data, total] = await this.repository.findAndCount({
       where: [
         {
           code: Like(`%${search}%`),
@@ -242,8 +247,11 @@ export class ReportQCService {
         },
       ],
       relations: ['category', 'processQC'],
+      skip: skip,
+      take: take,
+      order: { createAt: 'DESC' },
     });
-    return res.status(HttpStatus.OK).send(data);
+    return res.status(HttpStatus.OK).send({ data, total });
   }
 
   async statistic(res, request, body) {

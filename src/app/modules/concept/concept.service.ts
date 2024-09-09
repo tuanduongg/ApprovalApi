@@ -23,7 +23,7 @@ export class ConceptService {
     private repository: Repository<Concept>,
     private readonly fileConceptService: FileConceptService,
     private readonly historyConceptService: HistoryConceptService,
-  ) {}
+  ) { }
 
   async all(res, request, body) {
     const {
@@ -31,40 +31,48 @@ export class ConceptService {
       categoryFilter,
       startDate,
       endDate,
-      codeFilter,
-      plNameFilter,
-      modelFilter,
-      productNameFilter,
       page,
+      search,
       rowsPerPage,
     } = body;
     const take = +rowsPerPage || 10;
     const newPage = +page || 0;
     const skip = newPage * take;
 
-    const whereOBJ = {
-      regisDate: Between(startDate, endDate),
-      code: Like(`%${codeFilter?.trim()}%`),
-      plName: Like(`%${plNameFilter?.trim()}%`),
-      modelName: Like(`%${modelFilter?.trim()}%`),
-      productName: Like(`%${productNameFilter?.trim()}%`),
-      category: { categoryId: In(categoryFilter) },
-      user: { userId: In(personName) },
-    };
+    const whereArrTemp: any = [
+      {
+        regisDate: Between(startDate, endDate),
+        code: Like(`%${search?.trim()}%`),
+      },
+      {
+        regisDate: Between(startDate, endDate),
+        plName: Like(`%${search?.trim()}%`),
+      },
+      {
+        regisDate: Between(startDate, endDate),
+        modelName: Like(`%${search?.trim()}%`),
+      },
+      {
+        regisDate: Between(startDate, endDate),
+        productName: Like(`%${search?.trim()}%`),
+      }
+    ]
 
-    if (personName?.length > 0) {
-      whereOBJ.user = { userId: In(personName) };
-    } else {
-      delete whereOBJ.user;
-    }
-    if (categoryFilter?.length > 0) {
-      whereOBJ.category = { categoryId: In(categoryFilter) };
-    } else {
-      delete whereOBJ.category;
-    }
+    const whereArr = whereArrTemp.map((item) => {
+      if (personName?.length > 0) {
+        item.user = { userId: In(personName) }
+      }
+
+      if (categoryFilter?.length > 0) {
+        item.category = { categoryId: In(categoryFilter) }
+      }
+      return item;
+
+    })
+
 
     const [data, total] = await this.repository.findAndCount({
-      where: whereOBJ,
+      where: whereArr,
       select: {
         conceptId: true,
         modelName: true,
@@ -230,7 +238,7 @@ export class ConceptService {
     if (code) {
       const data = await this.repository.findOne({
         select: {
-          conceptId:true,
+          conceptId: true,
           modelName: true,
           plName: true,
           productName: true,

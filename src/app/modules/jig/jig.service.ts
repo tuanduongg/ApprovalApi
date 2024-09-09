@@ -11,7 +11,7 @@ export class JIGService {
     @InjectRepository(JIG)
     private repository: Repository<JIG>,
     private readonly inOutJigService: InOutJIGService,
-  ) {}
+  ) { }
   async create(body, request, res) {
     const dataStr = body?.data;
     const dataObj = JSON.parse(dataStr);

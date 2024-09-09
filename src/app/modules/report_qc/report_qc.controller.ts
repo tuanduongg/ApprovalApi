@@ -14,11 +14,13 @@ import { ReportQCService } from './report_qc.service';
 import { multerOptionConcept } from 'src/core/utils/multer.config';
 import { handleFiles } from 'src/core/utils/helper';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { StorageGuard } from 'src/core/guards/storage.guard';
 
 @Controller('report-qc')
 export class ReportQCController {
-  constructor(private service: ReportQCService) {}
+  constructor(private service: ReportQCService) { }
 
+  @UseGuards(StorageGuard)
   @UseGuards(AuthGuard)
   @Post('/add')
   @UseInterceptors(
@@ -80,6 +82,7 @@ export class ReportQCController {
     );
   }
 
+  @UseGuards(StorageGuard)
   @UseGuards(AuthGuard)
   @Post('/update')
   @UseInterceptors(

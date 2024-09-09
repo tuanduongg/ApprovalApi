@@ -15,7 +15,6 @@ export class CategoryConceptService {
   }
   async statisticReportQC(res, request, body) {
     const { startDate, endDate } = body;
-    console.log('{ startDate, endDate }', { startDate, endDate });
     const arrCate = await this.all();
     const data = await this.repository.find({
       select: {
