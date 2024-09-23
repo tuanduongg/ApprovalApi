@@ -87,7 +87,6 @@ export const handleFiles = async (
   if (!files || files?.length <= 0) {
     return [];
   }
-  console.log('arrFile', files);
 
   const arrFile = files.map((file) => {
     if (file) {
@@ -169,3 +168,43 @@ export const handleFiles = async (
 //   const ext = originalname.split('.').pop();
 //   return ext ? ext : '';
 // };
+
+export const LIST_COL_REPORT_QC = [
+  { key: 'category', header: 'Category', width: 10 },
+  { key: 'model', header: 'Model', width: 10 },
+  { key: 'plName', header: 'PL/Name', width: 10 },
+  { key: 'code', header: 'Code', width: 17 },
+  { key: 'item', header: 'Item', width: 10 },
+  { key: 'shift', header: 'Shift', width: 10 },
+  { key: 'week', header: 'Week', width: 8 },
+  { key: 'time', header: 'Date', width: 10 },
+  { key: 'nameNG', header: '불량명(Tên Lỗi)', width: 20 },
+  { key: 'percentageNG', header: 'Tỷ Lệ', width: 15 },
+  { key: 'process', header: '부적합 통보', width: 15 },
+  { key: 'supplier', header: '고객(Khách hàng)', width: 20 },
+  { key: 'attributable', header: '귀책처(Chịu trách nhiệm)', width: 30 },
+  {
+    key: 'representative',
+    header: '공급 업체 담당자(Đại diện NCC)',
+    width: 30,
+  },
+  { key: 'techNG', header: '불량원인(Nguyên nhân lỗi)', width: 30 },
+  { key: 'tempSolution', header: '임시조치(Biện pháp)', width: 30 },
+  { key: 'dateRequest', header: 'Request Date', width: 20 },
+  { key: 'dateReply', header: 'Reply Date', width: 20 },
+  { key: 'seowonStock', header: 'Seowon Stock', width: 17 },
+  { key: 'vendorStock', header: 'Vendor Stock', width: 17 },
+  { key: 'author', header: '등록자(Người đăng ký)', width: 25 },
+  { key: 'remark', header: '조치사항(Hành động đã thực hiện)', width: 40 },
+  { key: 'iamgeNG', header: 'Hình Ảnh' },
+];
+export const formatNumberWithCommas = (text) => {
+  if (!text) {
+    return '';
+  }
+  const numericValue = `${text}`.replace(/,/g, ''); // Remove existing commas before formatting
+  if (numericValue) {
+    const formattedValue = numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return formattedValue;
+  }
+};

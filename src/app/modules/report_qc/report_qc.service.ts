@@ -3,11 +3,17 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { CategoryConcept } from 'src/database/entity/category_concept.entity';
 import { ProcessQC } from 'src/database/entity/process_qc.entity';
 import { ReportQC } from 'src/database/entity/report_qc.entity';
-import { Like, Repository } from 'typeorm';
+import { Between, FindManyOptions, In, Like, Repository } from 'typeorm';
 import { FileReportQCService } from '../file_reportQC/file_reportQC.service';
 import { FileReportQC } from 'src/database/entity/file_reportQC.entity';
 import { ProcessQCService } from '../process_qc/process_qc.service';
+import {
+  formatNumberWithCommas,
+  LIST_COL_REPORT_QC,
+} from 'src/core/utils/helper';
 const ExcelJS = require('exceljs');
+import * as fs from 'fs';
+import { join } from 'path';
 
 @Injectable()
 export class ReportQCService {
@@ -16,7 +22,7 @@ export class ReportQCService {
     private repository: Repository<ReportQC>,
     private readonly processQCService: ProcessQCService,
     private readonly fileReportQCService: FileReportQCService,
-  ) { }
+  ) {}
 
   async add(res, request, body, arrFile = [], arrImage = []) {
     const dataString = body?.data;
@@ -102,8 +108,6 @@ export class ReportQCService {
     const imagesDelete = dataObj?.imagesDelete;
     const filesDelete = dataObj?.filesDelete;
     const listFileAdd = arrFile.concat(arrImage);
-    console.log('arrFile 105', arrFile);
-
 
     const {
       shift,
@@ -220,38 +224,139 @@ export class ReportQCService {
       .send({ message: 'Cannot found ID!' });
   }
 
-  async all(res, request, body) {
-    const search = body?.search;
-    const page = body?.page;
-    const rowsPerPage = body?.rowsPerPage;
-    const take = +rowsPerPage || 10;
-    const newPage = +page || 0;
-    const skip = newPage * take;
+  private async getAll(
+    {
+      search,
+      startDate,
+      endDate,
+      category = [],
+      skip = null,
+      take = null,
+      process = [],
+    },
+    media = false,
+  ) {
+    let arrWhere = [
+      {
+        code: Like(`%${search}%`),
+        time: Between(startDate, endDate),
+      },
+      {
+        model: Like(`%${search}%`),
+        time: Between(startDate, endDate),
+      },
+      {
+        plName: Like(`%${search}%`),
+        time: Between(startDate, endDate),
+      },
+      {
+        item: Like(`%${search}%`),
+        time: Between(startDate, endDate),
+      },
+    ];
 
-    const [data, total] = await this.repository.findAndCount({
-      where: [
-        {
-          code: Like(`%${search}%`),
+    if (category && category.length > 0) {
+      arrWhere = arrWhere.map((item) => {
+        return {
+          ...item,
+          category: {
+            categoryId: In(category),
+          },
+        };
+      });
+    }
+    if (process && process.length > 0) {
+      arrWhere = arrWhere.map((item) => {
+        return {
+          ...item,
+          processQC: { processId: In(process) },
+        };
+      });
+    }
+
+    const condition = {
+      select: {
+        reportId: true,
+        model: true,
+        plName: true,
+        code: true,
+        item: true,
+        shift: true,
+        week: true,
+        time: true,
+        nameNG: true,
+        percentageNG: true,
+        supplier: true,
+        attributable: true,
+        representative: true,
+        techNG: true,
+        tempSolution: true,
+        dateRequest: true,
+        dateReply: true,
+        seowonStock: true,
+        vendorStock: true,
+        author: true,
+        createAt: true,
+        remark: true,
+        category: {
+          categoryId: true,
+          categoryName: true,
         },
-        {
-          model: Like(`%${search}%`),
+        processQC: {
+          processId: true,
+          processName: true,
         },
-        {
-          plName: Like(`%${search}%`),
+        media: {
+          fileId: true,
+          fileUrl: true,
+          fileExtenstion: true,
+          type: true,
         },
-        {
-          item: Like(`%${search}%`),
-        },
-        {
-          author: Like(`%${search}%`),
-        },
-      ],
+      },
+      where: arrWhere,
       relations: ['category', 'processQC'],
       skip: skip,
       take: take,
       order: { createAt: 'DESC' },
+    } as FindManyOptions<ReportQC>;
+    if (media) {
+      condition.relations = ['category', 'processQC', 'media'];
+      condition.where = arrWhere.map((item) => ({
+        ...item,
+      }));
+    }
+    if (!skip && !take) {
+      delete condition.take;
+      delete condition.skip;
+      const res = await this.repository.find(condition);
+      return { data: res, total: 0 };
+    }
+    const [data, total] = await this.repository.findAndCount(condition);
+    return { data, total };
+  }
+
+  async all(res, request, body) {
+    const search = body?.search?.trim();
+    const page = body?.page;
+    const startDate = body?.startDate;
+    const endDate = body?.endDate;
+    const rowsPerPage = body?.rowsPerPage;
+    const category = body?.category;
+    const process = body?.process;
+    const take = +rowsPerPage || 10;
+    const newPage = +page || 0;
+    const skip = newPage * take;
+
+    const result = await this.getAll({
+      search,
+      startDate,
+      endDate,
+      category,
+      skip,
+      take,
+      process,
     });
-    return res.status(HttpStatus.OK).send({ data, total });
+    return res.status(HttpStatus.OK).send(result);
   }
 
   async statistic(res, request, body) {
@@ -300,13 +405,15 @@ export class ReportQCService {
               case 0:
                 rowAdd['category'] = row?.categoryName;
                 rowAdd['type'] = '통보서(Thông báo)';
-                rowAdd[process?.processId] = process?.counterRequest;
+                rowAdd[process?.processId] =
+                  process?.counterRequest === 0 ? '' : process?.counterRequest;
                 rowAdd['TOTAL'] = row?.sumRowRequest;
                 break;
               case 1:
                 rowAdd['category'] = '';
                 rowAdd['type'] = '대책서(Đối sách)';
-                rowAdd[process?.processId] = process?.counterReply;
+                rowAdd[process?.processId] =
+                  process?.counterReply === 0 ? '' : process?.counterReply;
                 rowAdd['TOTAL'] = row?.sumRowReply;
                 break;
               case 2:
@@ -348,6 +455,123 @@ export class ReportQCService {
     res.setHeader(
       'Content-Disposition',
       'attachment; filename=' + 'Report.xlsx',
+    );
+    res.end(buffer);
+  }
+  async exportExcelReport(res, request, body) {
+    const search = body?.search;
+    const startDate = body?.startDate;
+    const endDate = body?.endDate;
+    const category = body?.category;
+    const result = await this.getAll(
+      {
+        search,
+        startDate,
+        endDate,
+        category,
+      },
+      true,
+    );
+
+    // const arrHeader = result[0]?.processArr.map((head) => ({
+    //   header: head?.processName,
+    //   key: head?.processId,
+    //   width: 10,
+    // }));
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.modified = new Date();
+    const worksheet = workbook.addWorksheet('Sheet1');
+    worksheet.columns = LIST_COL_REPORT_QC;
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFADD8E6' }, // Green color
+      };
+    });
+    worksheet.properties.defaultRowHeight = 30;
+    const arrImage = [];
+    for (let index = 0; index < result.data.length; index++) {
+      const item = result.data[index];
+      const shiftCustom = item.shift == 'D' ? 'Day' : 'Night';
+
+      await worksheet.addRow({
+        ...item,
+        category: item?.category?.categoryName,
+        shift: shiftCustom,
+        percentageNG: item?.percentageNG + '%',
+        process: item.processQC.processName,
+        seowonStock: formatNumberWithCommas(item.seowonStock),
+        vendorStock: formatNumberWithCommas(item.vendorStock),
+      });
+      arrImage.push({
+        index,
+        images: item.media.filter((row) => row.type === 'IMG'),
+      });
+    }
+    let maxColMerge = 0;
+    arrImage.map(async (item) => {
+      const index = item.index;
+      const lengthImages = item.images.length;
+      if (lengthImages > maxColMerge) {
+        maxColMerge = lengthImages;
+      }
+      item.images.map((img, i) => {
+        if (img.type === 'IMG') {
+          const colImageStart = worksheet.getColumn(
+            LIST_COL_REPORT_QC.length + i,
+          ).letter;
+          const filePath = join(
+            process.env.UPLOAD_FOLDER || './public',
+            img.fileUrl,
+          );
+          const image = workbook.addImage({
+            buffer: fs.readFileSync(filePath),
+            extension: img.fileExtenstion,
+          });
+
+          worksheet.addImage(
+            image,
+            `${colImageStart}${index + 2}:${colImageStart}${index + 2}`,
+          );
+        }
+      });
+    });
+    const startColMer = worksheet.getColumn(LIST_COL_REPORT_QC.length).letter;
+    const endColMer = worksheet.getColumn(
+      LIST_COL_REPORT_QC.length - 1 + maxColMerge,
+    ).letter;
+    if (maxColMerge !== 0) {
+      worksheet.mergeCells(`${startColMer}1:${endColMer}1`);
+    }
+    // worksheet.addImage(
+    //   imageId,
+    //   `${colImageStart}${index + 2}:${colImageStart}${index + 2}`,
+    // );
+
+    // // Căn giữa và thêm border cho các ô có dữ liệu
+    worksheet.eachRow((row, rowNumber) => {
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        cell.alignment = {
+          vertical: 'middle',
+          horizontal: 'center',
+          wrapText: true,
+        };
+      });
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    res.status(HttpStatus.OK);
+
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename=' + 'ReportABC.xlsx',
     );
     res.end(buffer);
   }

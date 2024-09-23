@@ -23,7 +23,7 @@ export class ConceptService {
     private repository: Repository<Concept>,
     private readonly fileConceptService: FileConceptService,
     private readonly historyConceptService: HistoryConceptService,
-  ) { }
+  ) {}
 
   async all(res, request, body) {
     const {
@@ -55,21 +55,19 @@ export class ConceptService {
       {
         regisDate: Between(startDate, endDate),
         productName: Like(`%${search?.trim()}%`),
-      }
-    ]
+      },
+    ];
 
     const whereArr = whereArrTemp.map((item) => {
       if (personName?.length > 0) {
-        item.user = { userId: In(personName) }
+        item.user = { userId: In(personName) };
       }
 
       if (categoryFilter?.length > 0) {
-        item.category = { categoryId: In(categoryFilter) }
+        item.category = { categoryId: In(categoryFilter) };
       }
       return item;
-
-    })
-
+    });
 
     const [data, total] = await this.repository.findAndCount({
       where: whereArr,
@@ -486,14 +484,22 @@ export class ConceptService {
       const promissUpdateENC = this.fileConceptService.updateENC(arrUpdateECN);
       const promissAddNewFile = this.fileConceptService.add(newFiles, concept); // Lưu thông tin tệp mới vào cơ sở dữ liệu
       await Promise.all([promissAddNewFile, promissUpdateENC]);
-      await this.historyConceptService.add(
-        concept,
-        {
-          type: 'UPDATE',
-          historyRemark: `${checkChangeInfor ? ` - Update infomation: ${arrInfoChange.join(', ')}` : ''}${textFile?.length > 0 ? ` - Delete File: ${textFile.join(', ')}` : ''} ${textFileAdd?.length > 0 ? ` - Add File:${textFileAdd.join(', ')}` : ''}${textFileChangeECN?.length > 0 ? ` - Change ECN:${textFileChangeECN.join(', ')}` : ''}`,
-        },
-        request,
-      );
+      if (
+        checkChangeInfor ||
+        arrInfoChange.length > 0 ||
+        textFile.length > 0 ||
+        textFileAdd.length > 0 ||
+        textFileChangeECN.length > 0
+      ) {
+        await this.historyConceptService.add(
+          concept,
+          {
+            type: 'UPDATE',
+            historyRemark: `${checkChangeInfor ? ` - Update infomation: ${arrInfoChange.join(', ')}` : ''}${textFile?.length > 0 ? ` - Delete File: ${textFile.join(', ')}` : ''} ${textFileAdd?.length > 0 ? ` - Add File:${textFileAdd.join(', ')}` : ''}${textFileChangeECN?.length > 0 ? ` - Change ECN:${textFileChangeECN.join(', ')}` : ''}`,
+          },
+          request,
+        );
+      }
       return res.status(HttpStatus.OK).send(concept);
     } catch (error) {
       console.log(error);

@@ -156,11 +156,11 @@ export class ReportQCController {
     return await this.service.all(res, request, body);
   }
 
-  @UseGuards(AuthGuard)
-  @Post('/statistic')
-  async statistic(@Res() res: Response, @Req() request: Request, @Body() body) {
-    return await this.service.statistic(res, request, body);
-  }
+  // @UseGuards(AuthGuard)
+  // @Post('/statistic')
+  // async statistic(@Res() res: Response, @Req() request: Request, @Body() body) {
+  //   return await this.service.statistic(res, request, body);
+  // }
   // @UseGuards(AuthGuard)
   @Post('/exportExcel-statistic')
   async exportExcelStatistic(
@@ -169,5 +169,13 @@ export class ReportQCController {
     @Body() body,
   ) {
     return await this.service.exportExcelStatistic(res, request, body);
+  }
+  @Post('/exportExcel-report')
+  async exportExcelReport(
+    @Res() res: Response,
+    @Req() request: Request,
+    @Body() body,
+  ) {
+    return await this.service.exportExcelReport(res, request, body);
   }
 }
