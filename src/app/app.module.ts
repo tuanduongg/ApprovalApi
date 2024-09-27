@@ -24,10 +24,16 @@ import { FileReportQC } from 'src/database/entity/file_reportQC.entity';
 import { ProcessQCModule } from './modules/process_qc/process_qc.module';
 import { ReportQCModule } from './modules/report_qc/report_qc.module';
 import { FileReportQCModule } from './modules/file_reportQC/file_reportQC.module';
-import { JIGModule } from './modules/jig/jig.module';
+// import { JIGModule } from './modules/jig/jig.module';
 import { JIG } from 'src/database/entity/jig.entity';
 import { InOutJIG } from 'src/database/entity/inout_jig.entity';
-import { InOutJIGModule } from './modules/intout_jig/inout_jig.module';
+import { Company } from 'src/database/entity/company.entity';
+import { ModelMold } from 'src/database/entity/model_mold.entity';
+import { ModelMoldModule } from './modules/model_mold/model_mold.module';
+import { CompanyModule } from './modules/company/company.module';
+import { OutputJig } from 'src/database/entity/output_jig.entity';
+import { OutputJigModule } from './modules/output_jig/output_jig.module';
+// import { InOutJIGModule } from './modules/intout_jig/inout_jig.module';
 
 @Module({
   imports: [
@@ -63,6 +69,9 @@ import { InOutJIGModule } from './modules/intout_jig/inout_jig.module';
             FileReportQC,
             JIG,
             InOutJIG,
+            Company,
+            ModelMold,
+            OutputJig
           ],
           requestTimeout: 30000, //for mssql
           synchronize: true,
@@ -88,10 +97,12 @@ import { InOutJIGModule } from './modules/intout_jig/inout_jig.module';
     ProcessQCModule,
     ReportQCModule,
     FileReportQCModule,
-    JIGModule,
-    InOutJIGModule
+    ModelMoldModule,
+    CompanyModule,
+    OutputJigModule
+    
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }
