@@ -20,6 +20,11 @@ export class ModelMoldController {
   }
 
   @UseGuards(AuthGuard)
+  @Post('/findByCategory')
+  async findByCategory(@Res() res: Response, @Req() request: Request, @Body() body) {
+    return await this.service.findByCategory(body, request, res);
+  }
+  @UseGuards(AuthGuard)
   @Post('/update')
   async update(@Res() res: Response, @Req() request: Request, @Body() body) {
     return await this.service.update(body, request, res);

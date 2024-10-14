@@ -246,7 +246,7 @@ export class ConceptService {
           },
         },
         relations: ['category'],
-        where: { code },
+        where: { code: Like(`%${code}%`) },
       });
       if (data) {
         return res.status(HttpStatus.OK).send(data);

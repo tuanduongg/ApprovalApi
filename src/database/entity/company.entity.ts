@@ -13,11 +13,13 @@ export class Company {
 
   @Column({ nullable: true })
   createAt: Date;
+  
   @Column({ nullable: true })
   createBy: string;
 
   @Column({ nullable: true })
   updateAt: Date;
+  
   @Column({ nullable: true })
   updateBy: string;
 }

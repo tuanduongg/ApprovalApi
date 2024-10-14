@@ -25,7 +25,7 @@ export class UsersService {
     return true;
   }
   async create(body, request, res) {
-    const { fullName, userName, role, password, isRoot } = body;
+    const { fullName, userName, role, password, isRoot, isKorean } = body;
     const userFind = await this.repository.findOne({
       where: { userName: ILike(userName) },
     });
@@ -40,6 +40,7 @@ export class UsersService {
       user.userName = userName;
       user.password = hashPass;
       user.isRoot = isRoot ?? false;
+      user.isKorean = isKorean ?? false;
       user.role = new Role().roleId = role;
       await this.repository.save(user);
 
@@ -47,7 +48,7 @@ export class UsersService {
     }
   }
   async update(body, request, res) {
-    const { fullName, role, isRoot, userId } = body;
+    const { fullName, role, isRoot, userId, isKorean } = body;
     if (!userId) {
       return res
         .status(HttpStatus.BAD_REQUEST)
@@ -62,6 +63,7 @@ export class UsersService {
     }
     userFind.fullName = fullName;
     userFind.isRoot = isRoot ?? false;
+    userFind.isKorean = isKorean ?? false;
     if (role) {
       userFind.role = new Role().roleId = role;
     }
@@ -103,6 +105,7 @@ export class UsersService {
           roleName: true,
         },
         isRoot: true,
+        isKorean: true,
       },
       relations: ['role'],
     });
@@ -180,5 +183,4 @@ export class UsersService {
     const size = await dirSize(process.env.UPLOAD_FOLDER || './public');
     return res.status(HttpStatus.OK).send({ size });
   }
-  
 }

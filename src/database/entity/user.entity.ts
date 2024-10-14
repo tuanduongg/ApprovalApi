@@ -19,6 +19,9 @@ export class User {
   @Column({ nullable: true, default: false })
   isRoot: boolean; //isRoot: có thể vào tất cả
 
+  @Column({ nullable: true, default: false })
+  isKorean: boolean; //account hàn quốc
+
   @ManyToOne(() => Role, (ref) => ref.users)
   @JoinColumn({name : 'roleId', referencedColumnName: 'roleId'})
   role: Role

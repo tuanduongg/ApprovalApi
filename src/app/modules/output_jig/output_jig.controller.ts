@@ -26,8 +26,40 @@ export class OutputJigController {
   }
 
   @UseGuards(AuthGuard)
+  @Post('/change-status')
+  async changeStatus(@Res() res: Response, @Req() request: Request, @Body() body) {
+    return await this.service.changeStatus(body, request, res);
+  }
+
+  @UseGuards(AuthGuard)
   @Post('/delete')
   async delete(@Res() res: Response, @Req() request: Request, @Body() body) {
     return await this.service.delete(body, request, res);
+  }
+
+  @Post('/history')
+  async history(
+    @Res() res: Response,
+    @Req() request: Request,
+    @Body() body,
+  ) {
+    return await this.service.history(res, request, body);
+  }
+  @Post('/export-excel')
+  async exportExcelReport(
+    @Res() res: Response,
+    @Req() request: Request,
+    @Body() body,
+  ) {
+    return await this.service.exportExcel(res, request, body);
+  }
+
+  @Post('/export-excel-id')
+  async exportExcelByID(
+    @Res() res: Response,
+    @Req() request: Request,
+    @Body() body,
+  ) {
+    return await this.service.exportExcelByID(res, request, body);
   }
 }

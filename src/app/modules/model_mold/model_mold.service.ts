@@ -2,56 +2,64 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CategoryConcept } from 'src/database/entity/category_concept.entity';
 import { ModelMold } from 'src/database/entity/model_mold.entity';
-import { Like, Repository } from 'typeorm';
+import { In, Like, Repository } from 'typeorm';
 
 @Injectable()
 export class ModelMoldService {
   constructor(
     @InjectRepository(ModelMold)
     private repository: Repository<ModelMold>,
-  ) { }
+  ) {}
 
   async all(body, request, res) {
-    const {
-      page,
-      rowsPerPage,
-      search
-    } = body;
+    const { page, rowsPerPage, search } = body;
     const take = +rowsPerPage || 10;
     const newPage = +page || 0;
     const skip = newPage * take;
     const [data, total] = await this.repository.findAndCount({
       where: [
         {
-          projectName: Like(`%${search}%`)
+          projectName: Like(`%${search}%`),
         },
         {
-          type: Like(`%${search}%`)
+          type: Like(`%${search}%`),
         },
         {
-          model: Like(`%${search}%`)
+          model: Like(`%${search}%`),
         },
         {
-          description: Like(`%${search}%`)
+          description: Like(`%${search}%`),
         },
       ],
       relations: ['category'],
       take: take,
       skip: skip,
-      order: { createAt: 'DESC' }
+      order: { createAt: 'DESC' },
     });
     return res.status(HttpStatus.OK).send({ data, total });
   }
 
-
+  async findByCategory(body, request, res) {
+    const { category } = body;
+    if (category) {
+      const data = await this.repository.find({
+        select: {
+          modelID: true,
+          projectName: true,
+          type: true,
+          model: true,
+          description: true,
+        },
+        where: { category: { categoryId: In(category) } },
+      });
+      return res.status(HttpStatus.OK).send(data);
+    }
+    return res
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ message: 'Not found record!' });
+  }
   async add(body, request, res) {
-    const {
-      project,
-      type,
-      model,
-      category,
-      description,
-    } = body;
+    const { project, type, model, category, description } = body;
     const newModel = new ModelMold();
     newModel.category = { categoryId: category } as CategoryConcept;
     newModel.type = type?.trim();
@@ -64,14 +72,7 @@ export class ModelMoldService {
     return res.status(HttpStatus.OK).send(newModel);
   }
   async update(body, request, res) {
-    const {
-      modelID,
-      project,
-      type,
-      model,
-      category,
-      description,
-    } = body;
+    const { modelID, project, type, model, category, description } = body;
 
     const newModel = await this.repository.findOne({ where: { modelID } });
     if (newModel) {
@@ -85,6 +86,8 @@ export class ModelMoldService {
       await this.repository.save(newModel);
       return res.status(HttpStatus.OK).send(newModel);
     }
-    return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Not found record!' });
+    return res
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ message: 'Not found record!' });
   }
 }

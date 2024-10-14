@@ -15,11 +15,13 @@ import { multerOptionConcept } from 'src/core/utils/multer.config';
 import { handleFiles } from 'src/core/utils/helper';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { StorageGuard } from 'src/core/guards/storage.guard';
+import { IsVNGuard } from 'src/core/guards/isVN.guard';
 
 @Controller('report-qc')
 export class ReportQCController {
   constructor(private service: ReportQCService) { }
 
+  @UseGuards(IsVNGuard)
   @UseGuards(StorageGuard)
   @UseGuards(AuthGuard)
   @Post('/add')
@@ -82,6 +84,7 @@ export class ReportQCController {
     );
   }
 
+  @UseGuards(IsVNGuard)
   @UseGuards(StorageGuard)
   @UseGuards(AuthGuard)
   @Post('/update')
@@ -144,12 +147,14 @@ export class ReportQCController {
     );
   }
 
+  @UseGuards(IsVNGuard)
   @UseGuards(AuthGuard)
   @Post('/delete')
   async delete(@Res() res: Response, @Req() request: Request, @Body() body) {
     return await this.service.delete(res, request, body);
   }
 
+  @UseGuards(IsVNGuard)
   @UseGuards(AuthGuard)
   @Post('/all')
   async all(@Res() res: Response, @Req() request: Request, @Body() body) {
@@ -162,6 +167,9 @@ export class ReportQCController {
   //   return await this.service.statistic(res, request, body);
   // }
   // @UseGuards(AuthGuard)
+
+  @UseGuards(IsVNGuard)
+  @UseGuards(AuthGuard)
   @Post('/exportExcel-statistic')
   async exportExcelStatistic(
     @Res() res: Response,
@@ -170,6 +178,9 @@ export class ReportQCController {
   ) {
     return await this.service.exportExcelStatistic(res, request, body);
   }
+  
+  @UseGuards(IsVNGuard)
+  @UseGuards(AuthGuard)
   @Post('/exportExcel-report')
   async exportExcelReport(
     @Res() res: Response,

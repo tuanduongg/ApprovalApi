@@ -8,6 +8,7 @@ import { FileReportQCService } from '../file_reportQC/file_reportQC.service';
 import { FileReportQC } from 'src/database/entity/file_reportQC.entity';
 import { ProcessQCService } from '../process_qc/process_qc.service';
 import {
+  formatDateFromDB,
   formatNumberWithCommas,
   LIST_COL_REPORT_QC,
 } from 'src/core/utils/helper';
@@ -472,7 +473,7 @@ export class ReportQCService {
       },
       true,
     );
-
+    
     // const arrHeader = result[0]?.processArr.map((head) => ({
     //   header: head?.processName,
     //   key: head?.processId,
@@ -505,6 +506,9 @@ export class ReportQCService {
         process: item.processQC.processName,
         seowonStock: formatNumberWithCommas(item.seowonStock),
         vendorStock: formatNumberWithCommas(item.vendorStock),
+        time: formatDateFromDB(item?.time, false),
+        dateRequest: formatDateFromDB(item?.dateRequest, false),
+        dateReply: formatDateFromDB(item?.dateReply, false),
       });
       arrImage.push({
         index,
@@ -527,15 +531,17 @@ export class ReportQCService {
             process.env.UPLOAD_FOLDER || './public',
             img.fileUrl,
           );
-          const image = workbook.addImage({
-            buffer: fs.readFileSync(filePath),
-            extension: img.fileExtenstion,
-          });
+          if (fs.existsSync(filePath)) {
+            const image = workbook.addImage({
+              buffer: fs.readFileSync(filePath),
+              extension: img.fileExtenstion,
+            });
 
-          worksheet.addImage(
-            image,
-            `${colImageStart}${index + 2}:${colImageStart}${index + 2}`,
-          );
+            worksheet.addImage(
+              image,
+              `${colImageStart}${index + 2}:${colImageStart}${index + 2}`,
+            );
+          }
         }
       });
     });

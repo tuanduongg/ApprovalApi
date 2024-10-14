@@ -24,15 +24,16 @@ import { FileReportQC } from 'src/database/entity/file_reportQC.entity';
 import { ProcessQCModule } from './modules/process_qc/process_qc.module';
 import { ReportQCModule } from './modules/report_qc/report_qc.module';
 import { FileReportQCModule } from './modules/file_reportQC/file_reportQC.module';
-// import { JIGModule } from './modules/jig/jig.module';
-import { JIG } from 'src/database/entity/jig.entity';
-import { InOutJIG } from 'src/database/entity/inout_jig.entity';
 import { Company } from 'src/database/entity/company.entity';
 import { ModelMold } from 'src/database/entity/model_mold.entity';
 import { ModelMoldModule } from './modules/model_mold/model_mold.module';
 import { CompanyModule } from './modules/company/company.module';
 import { OutputJig } from 'src/database/entity/output_jig.entity';
 import { OutputJigModule } from './modules/output_jig/output_jig.module';
+import { HistoryOutJigModule } from './modules/history_out_jig/history_concept.module';
+import { HistoryOutJig } from 'src/database/entity/history_out_jig.entity';
+import { HistoryTryNo } from 'src/database/entity/history_tryno.entity';
+import { HistoryTryNoModule } from './modules/history_tryno/history_tryno.module';
 // import { InOutJIGModule } from './modules/intout_jig/inout_jig.module';
 
 @Module({
@@ -67,11 +68,11 @@ import { OutputJigModule } from './modules/output_jig/output_jig.module';
             ProcessQC,
             ReportQC,
             FileReportQC,
-            JIG,
-            InOutJIG,
             Company,
             ModelMold,
-            OutputJig
+            OutputJig,
+            HistoryOutJig,
+            HistoryTryNo
           ],
           requestTimeout: 30000, //for mssql
           synchronize: true,
@@ -99,10 +100,12 @@ import { OutputJigModule } from './modules/output_jig/output_jig.module';
     FileReportQCModule,
     ModelMoldModule,
     CompanyModule,
-    OutputJigModule
-    
+    OutputJigModule,
+    HistoryOutJigModule,
+    HistoryTryNoModule
+
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}

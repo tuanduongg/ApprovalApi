@@ -3,6 +3,8 @@ import { readdir, stat } from 'fs/promises';
 import * as path from 'path';
 
 import * as fs from 'fs';
+import dayjs from 'dayjs';
+import { Between } from 'typeorm';
 
 const SALTROUNDS = 10;
 
@@ -46,6 +48,50 @@ export function getFileNameWithoutExtension(originalname: string): string {
   }
   return originalname;
 }
+function isDate(value) {
+  return value instanceof Date;
+}
+
+export function addZero(num) {
+  const numInt = parseInt(num);
+  return (numInt < 10 ? '0' : '') + numInt;
+}
+export const formatDateFromDB = (dateString, showTime = true) => {
+  if (!dateString) {
+    return '';
+  }
+  // Tạo một đối tượng Date từ chuỗi
+  let date = null;
+  if (isDate(dateString)) {
+    date = dateString;
+  } else {
+    date = new Date(dateString);
+  }
+  // Lấy các thành phần ngày
+  const day = date.getDate();
+  const month = date.getMonth() + 1; // Lưu ý: Tháng bắt đầu từ 0 nên cần cộng thêm 1
+  const year = date.getFullYear();
+  if (!showTime) {
+    return year + '/' + addZero(month) + '/' + addZero(day);
+  }
+  // Lấy các thành phần thời gian
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+
+  // Hàm để thêm số 0 trước các giá trị nhỏ hơn 10
+  // Tạo chuỗi định dạng
+  return (
+    addZero(hours) +
+    ':' +
+    addZero(minutes) +
+    ' ' +
+    year +
+    '/' +
+    addZero(month) +
+    '/' +
+    addZero(day)
+  );
+};
 
 //2024-07-31T17:00:00.000Z -> 2024-07-31T23:59:00.000Z
 export function convertToEndOfDay(dateString: string) {
@@ -164,20 +210,159 @@ export const handleFiles = async (
   return arrFile;
 };
 
+export function isDateDifferent(date1, date2) {
+  const d1 = new Date(date1);
+  const d2 = new Date(date2);
+
+  return (
+    d1.getFullYear() !== d2.getFullYear() ||
+    d1.getMonth() !== d2.getMonth() ||
+    d1.getDate() !== d2.getDate()
+  );
+}
 // const getExtenstionFromOriginalName = (originalname: string) => {
 //   const ext = originalname.split('.').pop();
 //   return ext ? ext : '';
 // };
+export const getStatusMoldName = (status) => {
+  switch (status) {
+    case 'DEV':
+      return '개발중';
+    case 'USE':
+      return '양산중';
+    case 'STOP':
+      return '사용중지';
+    case 'RISK':
+      return 'Risk양산';
+    case 'EDIT':
+      return '양산수정';
+    case 'DEV_EDIT':
+      return '개발수정';
+    default:
+      return '';
+  }
+};
+
+export const checkStatusOnChange = (oldStatus: string, newStatus: string) => {
+  if (oldStatus === 'DEV_EDIT' && newStatus === 'DEV') {
+    return 1; //phat trien
+  }
+  const arr = ['USE', 'RISK', 'DEV'];
+  if (oldStatus === 'EDIT' && arr.includes(newStatus)) {
+    return 2; //san xuat
+  }
+  return 0;
+};
+
+export const LIST_COL_MOLD_REPORT_ID = [
+  { header: 'Category', key: 'category', width: 10 },
+  { header: 'Project', key: 'project', width: 10 },
+  { header: ' 구분', key: 'type', width: 10 },
+  { header: 'Model', key: 'model', width: 10 },
+  { header: 'Description', key: 'description', width: 28 },
+  { header: 'Mold No.', key: 'moldNo', width: 10 },
+  { header: '제작업체(NSX)', key: 'manufacturer', width: 20 },
+  { header: '발송지역(Nơi VC)', key: 'shipArea', width: 20 },
+  {
+    header: '출고 계획(Thời gian)',
+    key: 'shipDate',
+
+    width: 20,
+  },
+  { header: '양산업체(Cty SX)', key: 'massCompany', width: 20 },
+  {
+    header: '양산업체입고(Thời gian)',
+    key: 'shipMassCompany',
+
+    width: 25,
+  },
+  { header: '수정업체(Nơi sửa)', key: 'modificationCompany', width: 20 },
+  {
+    header: '수리 출고(Xuất kho sửa)',
+    key: 'outputEdit',
+
+    width: 25,
+  },
+  { header: '입고 계획(K.Hoạch xong)', key: 'wearingPlan', width: 20 },
+  {
+    header: '입고 완료(T.Tế xong)',
+    key: 'receivingCompleted',
+
+    width: 20,
+  },
+  { header: 'TRY NO.', key: 'tryNo', width: 10 },
+  { header: '수정내역(Nội dung sửa)', key: 'historyEdit', width: 30 },
+  { header: '수정', key: 'departEdit', width: 20 },
+];
+
+export function getDepartmentEditMold(num: number) {
+  let text = '';
+  switch (
+    num //phat trien
+  ) {
+    case 1:
+      text = '개발수정';
+
+      break;
+    case 2: // san xuat
+      text = '양산수정';
+      break;
+
+    default:
+      break;
+  }
+  return text;
+}
+export const LIST_COL_MOLD_REPORT = [
+  { header: 'Category', key: 'category', width: 10 },
+  { header: 'Project', key: 'project', width: 10 },
+  { header: ' 구분', key: 'type', width: 10 },
+  { header: 'Model', key: 'model', width: 10 },
+  { header: 'Description', key: 'description', width: 28 },
+  { header: 'Mold No.', key: 'moldNo', width: 10 },
+  { header: '제작업체(NSX)', key: 'manufacturer', width: 20 },
+  { header: '발송지역(Nơi VC)', key: 'shipArea', width: 20 },
+  {
+    header: '출고 계획(Thời gian)',
+    key: 'shipDate',
+
+    width: 20,
+  },
+  { header: '양산업체(Cty SX)', key: 'massCompany', width: 20 },
+  {
+    header: '양산업체입고(Thời gian)',
+    key: 'shipMassCompany',
+
+    width: 25,
+  },
+  { header: '수정업체(Nơi sửa)', key: 'modificationCompany', width: 20 },
+  {
+    header: '수리 출고(Xuất kho sửa)',
+    key: 'outputEdit',
+
+    width: 25,
+  },
+  { header: '입고 계획(K.Hoạch xong)', key: 'wearingPlan', width: 20 },
+  {
+    header: '입고 완료(T.Tế xong)',
+    key: 'receivingCompleted',
+
+    width: 20,
+  },
+  { header: 'TRY NO.', key: 'tryNo', width: 10 },
+  { header: '수정내역(Nội dung sửa)', key: 'historyEdit', width: 30 },
+  { header: '양산적용(Trạng thái)', key: 'productionStatus', width: 25 },
+];
 
 export const LIST_COL_REPORT_QC = [
-  { key: 'category', header: 'Category', width: 10 },
+  { key: 'category', header: 'Category', width: 15 },
   { key: 'model', header: 'Model', width: 10 },
   { key: 'plName', header: 'PL/Name', width: 10 },
   { key: 'code', header: 'Code', width: 17 },
   { key: 'item', header: 'Item', width: 10 },
   { key: 'shift', header: 'Shift', width: 10 },
   { key: 'week', header: 'Week', width: 8 },
-  { key: 'time', header: 'Date', width: 10 },
+  { key: 'time', header: 'Date', width: 15 },
   { key: 'nameNG', header: '불량명(Tên Lỗi)', width: 20 },
   { key: 'percentageNG', header: 'Tỷ Lệ', width: 15 },
   { key: 'process', header: '부적합 통보', width: 15 },
@@ -207,4 +392,16 @@ export const formatNumberWithCommas = (text) => {
     const formattedValue = numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     return formattedValue;
   }
+};
+// TypeORM Query Operators
+export const BetweenDates = (
+  dateFrom: Date | string,
+  dateTo: Date | string,
+) => {
+  const parsedDateFrom = dayjs(dateFrom); // Chuyển đổi chuỗi hoặc Date thành đối tượng dayjs
+  const parsedDateTo = dayjs(dateTo); // Chuyển đổi chuỗi hoặc Date thành đối tượng dayjs
+  const from = parsedDateFrom.startOf('day').format('YYYY-MM-DD HH:mm:ss'); // 00:00:00
+  const to = parsedDateTo.endOf('day').format('YYYY-MM-DD HH:mm:ss'); // 23:59:59
+
+  return Between(from, to);
 };

@@ -55,11 +55,11 @@ export class ReportQC {
   representative: string;
 
   //công nghệ gây nỗi
-  @Column({ nullable: true })
+  @Column({ type: 'ntext', nullable: true })
   techNG: string;
 
   //giải pháp tạm thời
-  @Column({ nullable: true })
+  @Column({ type: 'ntext', nullable: true })
   tempSolution: string;
 
   @Column({ nullable: true, type: Date })
@@ -94,7 +94,7 @@ export class ReportQC {
   updateby: string;
 
   //remark
-  @Column({ type: 'nvarchar', length: 'max', nullable: true })
+  @Column({ type: 'ntext', nullable: true })
   remark: string;
 
   @ManyToOne(() => CategoryConcept, (ref) => ref.reportQC)

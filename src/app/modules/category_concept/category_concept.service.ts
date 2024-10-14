@@ -24,6 +24,7 @@ export class CategoryConceptService {
           reportId: true,
           dateReply: true,
           dateRequest: true,
+          time:true,
           processQC: {
             processId: true,
             processName: true,
