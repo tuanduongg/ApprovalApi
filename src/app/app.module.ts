@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
@@ -34,6 +34,9 @@ import { HistoryOutJigModule } from './modules/history_out_jig/history_concept.m
 import { HistoryOutJig } from 'src/database/entity/history_out_jig.entity';
 import { HistoryTryNo } from 'src/database/entity/history_tryno.entity';
 import { HistoryTryNoModule } from './modules/history_tryno/history_tryno.module';
+import { NotificationModule } from './modules/notification/notification.module';
+import { Notification } from 'src/database/entity/notification.entity';
+import { LogIPMiddleware } from 'src/core/middlewares/LogIP.middleware';
 // import { InOutJIGModule } from './modules/intout_jig/inout_jig.module';
 
 @Module({
@@ -72,7 +75,8 @@ import { HistoryTryNoModule } from './modules/history_tryno/history_tryno.module
             ModelMold,
             OutputJig,
             HistoryOutJig,
-            HistoryTryNo
+            HistoryTryNo,
+            Notification
           ],
           requestTimeout: 30000, //for mssql
           synchronize: true,
@@ -102,10 +106,20 @@ import { HistoryTryNoModule } from './modules/history_tryno/history_tryno.module
     CompanyModule,
     OutputJigModule,
     HistoryOutJigModule,
-    HistoryTryNoModule
+    HistoryTryNoModule,
+    NotificationModule
 
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(LogIPMiddleware)
+      .forRoutes(
+        { path: 'auth/login', method: RequestMethod.POST }, // Áp dụng cho route GET /login
+      );
+      // .forRoutes('*'); // Áp dụng middleware cho tất cả các route
+  }
+}

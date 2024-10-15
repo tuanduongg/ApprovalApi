@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Ip,
   Post,
   Req,
   Res,
@@ -26,14 +27,14 @@ export class ConceptController {
   constructor(private service: ConceptService) { }
 
   @UseGuards(StorageGuard)
-  
+
   @UseGuards(IsVNGuard)
   @UseGuards(AuthGuard)
   @Post('/add')
   @UseInterceptors(FilesInterceptor('files', 30, {
     storage: diskStorage({
       destination: (req, file, cb) => {
-        
+
         cb(null, '');
       },
       filename: (req, file, cb) => {
@@ -51,9 +52,9 @@ export class ConceptController {
     const arrFile = await handleFiles(files);
     return await this.service.add(res, request, body, arrFile);
   }
-  
+
   @UseGuards(StorageGuard)
-  
+
   @UseGuards(IsVNGuard)
   @UseGuards(AuthGuard)
   @Post('/update')
@@ -74,12 +75,13 @@ export class ConceptController {
     @UploadedFiles() files: Express.Multer.File[],
   ) {
     const arrFile = await handleFiles(files);
-
+    // const ip = request.headers['x-forwarded-for'] || request..remoteAddress;
+    // console.log('IP của request:', ip);
     return await this.service.update(res, request, body, arrFile);
   }
 
-  
-  
+
+
   @UseGuards(IsVNGuard)
   @UseGuards(AuthGuard)
   @Post('/detail')
@@ -87,15 +89,15 @@ export class ConceptController {
     return await this.service.detail(res, request, body);
   }
 
-  
+
   @UseGuards(IsVNGuard)
   @UseGuards(AuthGuard)
   @Post('/all')
-  async all(@Res() res: Response, @Req() request: Request, @Body() body) {
+  async all(@Res() res: Response, @Req() request: Request, @Body() body, @Ip() ip) {
     return await this.service.all(res, request, body);
   }
 
-  
+
   @UseGuards(IsVNGuard)
   @UseGuards(AuthGuard)
   @Post('/accept')
@@ -103,7 +105,7 @@ export class ConceptController {
     return await this.service.accept(res, request, body);
   }
 
-  
+
   @UseGuards(IsVNGuard)
   @UseGuards(AuthGuard)
   @Post('/download')
@@ -111,7 +113,7 @@ export class ConceptController {
     return await this.service.download(res, request, body);
   }
 
-  
+
   @UseGuards(IsVNGuard)
   @UseGuards(AuthGuard)
   @Post('/download-multiple')
@@ -119,7 +121,7 @@ export class ConceptController {
     return await this.service.downloadMultiple(res, request, body);
   }
 
-  
+
   @UseGuards(IsVNGuard)
   @UseGuards(AuthGuard)
   @Post('/history')
@@ -127,7 +129,7 @@ export class ConceptController {
     return await this.service.history(res, request, body);
   }
 
-  
+
   @UseGuards(IsVNGuard)
   @UseGuards(AuthGuard)
   @Post('/findByCode')
@@ -135,7 +137,7 @@ export class ConceptController {
     return await this.service.findByCode(res, request, body);
   }
 
-  
+
   @UseGuards(IsVNGuard)
   @UseGuards(AuthGuard)
   @Post('/delete')

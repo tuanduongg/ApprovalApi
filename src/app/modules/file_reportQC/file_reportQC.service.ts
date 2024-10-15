@@ -6,6 +6,7 @@ import * as path from 'path';
 import { FileReportQC } from 'src/database/entity/file_reportQC.entity';
 import { ReportQC } from 'src/database/entity/report_qc.entity';
 import {
+  getAllFilesInFolder,
   getExtenstionFromOriginalName,
   getFileNameWithoutExtension,
 } from 'src/core/utils/helper';
@@ -15,7 +16,7 @@ export class FileReportQCService {
   constructor(
     @InjectRepository(FileReportQC)
     private repository: Repository<FileReportQC>,
-  ) {}
+  ) { }
 
   //delete file in database and folder using array object file
   async deleteMultipleFile(arrFile: FileReportQC[]) {
@@ -189,5 +190,53 @@ export class FileReportQCService {
     return res
       .status(HttpStatus.BAD_REQUEST)
       .send({ message: 'Not found ReportId!' });
+  }
+
+
+  // Function to move file to another folder
+  async moveFile(file: string, destinationFolder: string) {
+    try {
+
+      const destinationPath = path.join(destinationFolder, path.basename(file)); // Destination file path
+      fs.renameSync(file, destinationPath); // Move the file
+      console.log(`Moved: ${file} -> ${destinationPath}`);
+    } catch (error) {
+      console.log(`Error moveFile():` + error);
+    }
+  };
+
+
+  async checkFileExistFolder(request, res) {
+    const user = request?.user;
+    if( !user?.isRoot) {
+      return res.status(HttpStatus.BAD_REQUEST).send({ message:'You do not have permission to access it!' });
+
+    }
+
+    const folder = process.env.UPLOAD_FOLDER || './public';
+    const folderQC = path.join(folder, './uploadsQC');
+    const missingFolder = path.join(folder, './NotFound');
+
+
+    // Get all files in folder and subfolders
+    const allFiles = getAllFilesInFolder(folderQC).map(file => ({
+      fullPath: file,
+      fileName: path.basename(file).toLowerCase()
+    }));
+
+    const fileInDB = await this.repository.find({ select: { fileUrl: true } });
+    const revertFileInDB = fileInDB.map(row => path.basename(row?.fileUrl).toLowerCase());
+
+    const missingFiles = allFiles.filter(file => !revertFileInDB.includes(file?.fileName));
+    if (missingFiles?.length > 0) {
+      // Ensure missingFolder exists
+      if (!fs.existsSync(missingFolder)) {
+        fs.mkdirSync(missingFolder);
+      }
+
+      missingFiles.forEach(file => this.moveFile(file.fullPath, missingFolder));
+    }
+
+    return res.status(HttpStatus.OK).send({ missingFiles });
   }
 }

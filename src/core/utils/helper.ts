@@ -126,6 +126,92 @@ export const dirSize = async (dir) => {
     .reduce((i, size) => i + size, 0);
 };
 
+// export const handleFiles = async (
+//   files: Express.Multer.File[],
+//   folderName: string = '',
+// ) => {
+//   if (!files || files?.length <= 0) {
+//     return [];
+//   }
+
+//   const arrFile = files.map((file) => {
+//     if (file) {
+//       try {
+//         const now = new Date();
+//         const year = now.getFullYear();
+//         const month = String(now.getMonth() + 1).padStart(2, '0'); // Tháng bắt đầu từ 0
+//         const day = String(now.getDate()).padStart(2, '0');
+//         const folderUpload = path.join(
+//           folderName ? folderName : 'uploads',
+//           `${day}${month}${year}`,
+//         );
+//         const uploadPath = path.join(
+//           process.env.UPLOAD_FOLDER || './public',
+//           folderUpload,
+//         );
+//         // Tạo thư mục nếu chưa tồn tại
+//         fs.mkdirSync(uploadPath, { recursive: true });
+
+//         const uniqueSuffix = Array(32)
+//           .fill(null)
+//           .map(() => Math.round(Math.random() * 16).toString(16))
+//           .join('');
+//         const extension = getExtenstionFromOriginalName(file?.originalname);
+//         const fileName = `${uniqueSuffix}${extension ? '.' + extension : ''}`;
+//         const urlStoreDB = path.join(folderUpload, fileName);
+//         const targetPath = path.join(uploadPath, fileName);
+
+//         const readableStream = fs.createReadStream(file?.path);
+//         const writableStream = fs.createWriteStream(targetPath);
+
+//         readableStream.pipe(writableStream);
+
+//         readableStream.on('error', (error) => {
+//           console.error('Error reading file:', error);
+//           fs.stat(file?.path, function (err, stats) {
+//             if (err) {
+//               return console.error(err);
+//             }
+//             fs.unlinkSync(file?.path); // Xóa tệp tạm thời nếu có lỗi
+//           });
+//         });
+
+//         writableStream.on('error', (error) => {
+//           console.error('Error writing file:', error);
+//           fs.stat(file?.path, function (err, stats) {
+//             if (err) {
+//               return console.error(err);
+//             }
+//             fs.unlinkSync(file?.path); // Xóa tệp tạm thời nếu có lỗi
+//           });
+//           fs.stat(file?.path, function (err, stats) {
+//             if (err) {
+//               return console.error(err);
+//             }
+//             fs.unlinkSync(targetPath); // Xóa tệp đích nếu có lỗi
+//           });
+//         });
+
+//         writableStream.on('finish', () => {
+//           fs.stat(file?.path, function (err, stats) {
+//             if (err) {
+//               return console.error(err);
+//             }
+//             fs.unlinkSync(file?.path); // Xóa tệp tạm thời khi barn ghi hoan tat
+//           });
+//         });
+//         return { ...file, urlStoreDB };
+//       } catch (error) {
+//         console.error('Error handling file:', error);
+//         throw error;
+//       }
+//     }
+//   });
+//   return arrFile;
+// };
+
+
+// new function handle files
 export const handleFiles = async (
   files: Express.Multer.File[],
   folderName: string = '',
@@ -149,8 +235,14 @@ export const handleFiles = async (
           process.env.UPLOAD_FOLDER || './public',
           folderUpload,
         );
+
         // Tạo thư mục nếu chưa tồn tại
-        fs.mkdirSync(uploadPath, { recursive: true });
+        try {
+          fs.mkdirSync(uploadPath, { recursive: true });
+        } catch (mkdirErr) {
+          console.error(`Error creating directory ${uploadPath}:`, mkdirErr);
+          throw mkdirErr; // Dừng lại nếu không thể tạo thư mục
+        }
 
         const uniqueSuffix = Array(32)
           .fill(null)
@@ -166,49 +258,55 @@ export const handleFiles = async (
 
         readableStream.pipe(writableStream);
 
+        // Xử lý lỗi khi đọc file
         readableStream.on('error', (error) => {
           console.error('Error reading file:', error);
-          fs.stat(file?.path, function (err, stats) {
-            if (err) {
-              return console.error(err);
+          try {
+            if (fs.existsSync(file?.path)) {
+              fs.unlinkSync(file?.path); // Xóa tệp tạm thời nếu có lỗi
             }
-            fs.unlinkSync(file?.path); // Xóa tệp tạm thời nếu có lỗi
-          });
+          } catch (unlinkErr) {
+            console.error(`Error deleting temporary file ${file?.path}:`, unlinkErr);
+          }
         });
 
+        // Xử lý lỗi khi ghi file
         writableStream.on('error', (error) => {
           console.error('Error writing file:', error);
-          fs.stat(file?.path, function (err, stats) {
-            if (err) {
-              return console.error(err);
+          try {
+            if (fs.existsSync(file?.path)) {
+              fs.unlinkSync(file?.path); // Xóa tệp tạm thời nếu có lỗi
             }
-            fs.unlinkSync(file?.path); // Xóa tệp tạm thời nếu có lỗi
-          });
-          fs.stat(file?.path, function (err, stats) {
-            if (err) {
-              return console.error(err);
+            if (fs.existsSync(targetPath)) {
+              fs.unlinkSync(targetPath); // Xóa tệp đích nếu có lỗi
             }
-            fs.unlinkSync(targetPath); // Xóa tệp đích nếu có lỗi
-          });
+          } catch (unlinkErr) {
+            console.error(`Error deleting file ${file?.path} or ${targetPath}:`, unlinkErr);
+          }
         });
 
+        // Hoàn thành quá trình ghi tệp
         writableStream.on('finish', () => {
-          fs.stat(file?.path, function (err, stats) {
-            if (err) {
-              return console.error(err);
+          try {
+            if (fs.existsSync(file?.path)) {
+              fs.unlinkSync(file?.path); // Xóa tệp tạm thời sau khi ghi hoàn tất
+              console.log(`Successfully deleted temporary file: ${file?.path}`);
             }
-            fs.unlinkSync(file?.path); // Xóa tệp tạm thời khi barn ghi hoan tat
-          });
+          } catch (unlinkErr) {
+            console.error(`Error deleting temporary file ${file?.path}:`, unlinkErr);
+          }
         });
+
         return { ...file, urlStoreDB };
       } catch (error) {
         console.error('Error handling file:', error);
-        throw error;
+        throw error; // Đẩy lỗi ra ngoài nếu không thể xử lý tệp
       }
     }
   });
   return arrFile;
 };
+
 
 export function isDateDifferent(date1, date2) {
   const d1 = new Date(date1);
@@ -298,7 +396,7 @@ export const LIST_COL_MOLD_REPORT_ID = [
 export function getDepartmentEditMold(num: number) {
   let text = '';
   switch (
-    num //phat trien
+  num //phat trien
   ) {
     case 1:
       text = '개발수정';
@@ -313,6 +411,14 @@ export function getDepartmentEditMold(num: number) {
   }
   return text;
 }
+export const LIST_COL_HISTORY = [
+  { header: '#', key: 'index', width: 10 },
+  { header: 'Type', key: 'type', width: 10 },
+  { header: 'User', key: 'user', width: 10 },
+  { header: 'Time', key: 'time', width: 28 },
+  { header: 'Content', key: 'content', width: 20 },
+
+];
 export const LIST_COL_MOLD_REPORT = [
   { header: 'Category', key: 'category', width: 10 },
   { header: 'Project', key: 'project', width: 10 },
@@ -404,4 +510,24 @@ export const BetweenDates = (
   const to = parsedDateTo.endOf('day').format('YYYY-MM-DD HH:mm:ss'); // 23:59:59
 
   return Between(from, to);
+};
+
+
+export const getAllFilesInFolder = function (dirPath: string, arrayOfFiles?: Array<any>) {
+  try {
+    const files = fs.readdirSync(dirPath);
+    arrayOfFiles = arrayOfFiles || [];
+    files.forEach(function (file) {
+      const fullPath = path.join(dirPath, file);
+      if (fs.statSync(fullPath).isDirectory()) {
+        arrayOfFiles = getAllFilesInFolder(fullPath, arrayOfFiles); // Recursively get files in subfolders
+      } else {
+        arrayOfFiles.push(fullPath); // Add the file with full path
+      }
+    });
+    return arrayOfFiles;
+  } catch (error) {
+    console.log('error getAllFilesInFolder():',error);
+    return []
+  }
 };

@@ -72,6 +72,8 @@ export class UserController {
   async update(@Res() res: Response, @Req() request: Request, @Body() body) {
     return await this.service.update(body, request, res);
   }
+  
+
 
   @UseGuards(AuthGuard)
   @Get('/get-storage')

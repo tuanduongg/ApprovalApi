@@ -11,6 +11,7 @@ import {
   getDepartmentEditMold,
   getStatusMoldName,
   isDateDifferent,
+  LIST_COL_HISTORY,
   LIST_COL_MOLD_REPORT,
   LIST_COL_MOLD_REPORT_ID,
 } from 'src/core/utils/helper';
@@ -421,8 +422,8 @@ export class OutputJigService {
       if (find) {
         let historyRemark = `${getStatusMoldName(oldStatus)} -> ${getStatusMoldName(productionStatus)}`;
         const departEdit = checkStatusOnChange(find?.productionStatus, productionStatus);
-        console.log('departEdit',departEdit);
-        
+        console.log('departEdit', departEdit);
+
         if (departEdit !== 0) {
           const saveTry = await this.historyTrynoService.inCrementTryNum(
             outputJigID,
@@ -432,7 +433,7 @@ export class OutputJigService {
           if (saveTry) {
             const { newTryNum, oldTryNum } = saveTry;
             historyRemark += `(T${oldTryNum} -> T${newTryNum})`;
-          }else {
+          } else {
             historyRemark += `(T0 -> T1)`
           }
         }
@@ -473,6 +474,118 @@ export class OutputJigService {
     const { outputJigID } = body;
     const data = await this.historyService.findByOutputJig(outputJigID);
     return res.status(HttpStatus.OK).send(data);
+  }
+
+  async exportHistory(res, request, body) {
+    const { outputJigID } = body;
+    const outputJig = await this.repository.findOne({
+      select: {
+        outputJigID: true,
+        moldNo: true,
+        model: {
+          modelID: true,
+          projectName: true,
+          type: true,
+          model: true,
+          description: true,
+        }
+      }, relations: ['model'], where: { outputJigID }
+    });
+
+    const data = await this.historyService.findByOutputJig(outputJigID);
+    const startRownumTable: number = 6;
+    if (data?.length > 0) {
+
+      const workbook = new ExcelJS.Workbook();
+      workbook.modified = new Date();
+      const worksheet = workbook.addWorksheet('Sheet1');
+
+      worksheet.addRow({});
+      worksheet.addRow(['Model', outputJig?.model?.model]);
+      worksheet.addRow(['Project Name', outputJig?.model?.projectName]);
+      worksheet.addRow(['구분', outputJig?.model?.type]);
+      worksheet.addRow(['Description', outputJig?.model?.description]);
+      worksheet.addRow(['Mold No.', outputJig?.moldNo ? `#${outputJig?.moldNo}` : '']);
+      for (let index = 2; index <= startRownumTable; index++) {
+        worksheet.mergeCells(`B${index}:D${index}`);
+        worksheet.getCell(`A${index}`).font = { bold: true };
+
+      }
+
+      // Thiết lập font bold cho các ô A1, A2, và A3
+
+      worksheet.getColumn(1).width = 15;
+      worksheet.getColumn(5).width = 30;
+      worksheet.getColumn(4).width = 20;
+      worksheet.addRow({});
+      worksheet.addRow([
+        '#',
+        'Type',
+        'User',
+        'Time',
+        'Content'
+      ]);
+      // Thiết lập font bold và màu nền xanh cho hàng thứ 8
+      const row6 = worksheet.getRow(startRownumTable + 2);
+      row6.font = { bold: true, color: { argb: 'FFFFFF' } }; // Thiết lập font bold
+      row6.eachCell({ includeEmpty: true }, (cell) => {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: '005595' }, // Màu xanh dương (ARGB: 0000FF)
+        };
+      });
+
+      data.map(async (item, index) => {
+        const arr = [];
+        arr.push(index + 1, item?.historyType, item?.historyUsername, `${formatDateFromDB(item?.historyTime, true)}`, item?.historyRemark);
+        await worksheet.addRow(arr);
+        // {
+        //   time: `${formatDateFromDB(item?.historyTime, true)}`,
+        //   index: index + 1,
+        //   type: item?.historyType,
+        //   user: item?.historyUsername,
+        //   content: item?.historyRemark
+        // }
+      })
+      // // Căn giữa và thêm border cho các ô có dữ liệu
+      worksheet.eachRow((row, rowIndex) => {
+        row.eachCell({ includeEmpty: true }, (cell) => {
+          if (rowIndex > startRownumTable) {
+            cell.alignment = {
+              vertical: 'middle',
+              horizontal: 'center',
+              wrapText: true,
+            };
+          }
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' },
+          };
+        });
+
+      });
+      worksheet.properties.defaultRowHeight = 15;
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      res.status(HttpStatus.OK);
+
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+      res.setHeader(
+        'Content-Disposition',
+        'attachment; filename=' + 'ReportABC.xlsx',
+      );
+      res.end(buffer);
+    }
+
+
+
+
   }
   async getAll2(body: any, showPaginate: boolean = true) {
     const {

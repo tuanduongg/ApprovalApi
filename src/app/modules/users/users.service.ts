@@ -1,16 +1,18 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { comparePasswords, dirSize, hashPassword } from 'src/core/utils/helper';
+import { comparePasswords, dirSize, getAllFilesInFolder, hashPassword } from 'src/core/utils/helper';
 import { Role } from 'src/database/entity/role.entity';
 import { User } from 'src/database/entity/user.entity';
 import { ILike, Like, Repository } from 'typeorm';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private repository: Repository<User>,
-  ) {}
+  ) { }
 
   async findOne(username: string): Promise<User> {
     const user = await this.repository.findOne({
@@ -179,8 +181,12 @@ export class UsersService {
       password: hashPasswordString,
     });
   }
+
   async getStorage(res) {
     const size = await dirSize(process.env.UPLOAD_FOLDER || './public');
     return res.status(HttpStatus.OK).send({ size });
   }
+
+
+  
 }

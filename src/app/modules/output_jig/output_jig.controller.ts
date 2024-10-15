@@ -45,6 +45,16 @@ export class OutputJigController {
   ) {
     return await this.service.history(res, request, body);
   }
+  
+  @Post('/export-history')
+  async exportHistory(
+    @Res() res: Response,
+    @Req() request: Request,
+    @Body() body,
+  ) {
+    return await this.service.exportHistory(res, request, body);
+  }
+
   @Post('/export-excel')
   async exportExcelReport(
     @Res() res: Response,
