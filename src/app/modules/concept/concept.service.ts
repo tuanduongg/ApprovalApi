@@ -23,7 +23,7 @@ export class ConceptService {
     private repository: Repository<Concept>,
     private readonly fileConceptService: FileConceptService,
     private readonly historyConceptService: HistoryConceptService,
-  ) {}
+  ) { }
 
   async all(res, request, body) {
     const {
@@ -166,45 +166,45 @@ export class ConceptService {
     }
     return res.status(404).send('File not found');
   }
-  async download(res, request, body) {
-    const fileID = body?.fileId;
-    if (fileID) {
-      const file = await this.fileConceptService.findById(fileID);
+  // async download(res, request, body) {
+  //   const fileID = body?.fileId;
+  //   if (fileID) {
+  //     const file = await this.fileConceptService.findById(fileID);
 
-      if (file) {
-        const url = file?.fileUrl;
-        const filePath = path.join(
-          process.env.UPLOAD_FOLDER || './public',
-          url,
-        );
+  //     if (file) {
+  //       const url = file?.fileUrl;
+  //       const filePath = path.join(
+  //         process.env.UPLOAD_FOLDER || './public',
+  //         url,
+  //       );
 
-        if (fs.existsSync(filePath)) {
-          const fileStream = fs.createReadStream(filePath);
+  //       if (fs.existsSync(filePath)) {
+  //         const fileStream = fs.createReadStream(filePath);
 
-          res.set({
-            'Content-Type': 'application/octet-stream',
-            'Content-Disposition': `attachment; filename="${encodeURI(file?.fileName)}"`,
-          });
-          res.status(200);
-          fileStream.pipe(res);
-          fileStream.on('error', (err) => {
-            console.error('Error downloading file', err);
-            return res
-              .status(HttpStatus.INTERNAL_SERVER_ERROR)
-              .send('Error downloading file');
-          });
-          return res;
-        } else {
-          return res.status(HttpStatus.NOT_FOUND).send('File not found');
-        }
-      } else {
-        return res.status(HttpStatus.NOT_FOUND).send('File not found');
-      }
-    }
-    return res
-      .status(HttpStatus.BAD_REQUEST)
-      .send({ message: 'Cannot found record!' });
-  }
+  //         res.set({
+  //           'Content-Type': 'application/octet-stream',
+  //           'Content-Disposition': `attachment; filename="${encodeURI(file?.fileName)}"`,
+  //         });
+  //         res.status(200);
+  //         fileStream.pipe(res);
+  //         fileStream.on('error', (err) => {
+  //           console.error('Error downloading file', err);
+  //           return res
+  //             .status(HttpStatus.INTERNAL_SERVER_ERROR)
+  //             .send('Error downloading file');
+  //         });
+  //         return res;
+  //       } else {
+  //         return res.status(HttpStatus.NOT_FOUND).send('File not found');
+  //       }
+  //     } else {
+  //       return res.status(HttpStatus.NOT_FOUND).send('File not found');
+  //     }
+  //   }
+  //   return res
+  //     .status(HttpStatus.BAD_REQUEST)
+  //     .send({ message: 'Cannot found record!' });
+  // }
   // async download(res, request, body) {
   //   const fileID = body?.fileId;
   //   if (fileID) {
@@ -231,6 +231,51 @@ export class ConceptService {
   //     .status(HttpStatus.BAD_REQUEST)
   //     .send({ message: 'Cannot found record!' });
   // }
+  async download(res, request, body) {
+    const fileID = body?.fileId;
+    if (fileID) {
+      const file = await this.fileConceptService.findById(fileID);
+
+      if (file) {
+        const url = file?.fileUrl;
+        const filePath = path.join(
+          process.env.UPLOAD_FOLDER || './public',
+          url,
+        );
+
+        if (fs.existsSync(filePath)) {
+          const fileStream = fs.createReadStream(filePath);
+
+
+          res.status(200);
+          fileStream.pipe(res);
+          res.set({
+            'Content-Type': 'application/octet-stream',
+            'Content-Disposition': `attachment; filename="${encodeURI(file?.fileName)}"`
+          });
+          res.on('finish', () => {
+            // return res;
+          });
+          // Pipe stream và lắng nghe các sự kiện
+
+
+
+          fileStream.on('error', (err) => {
+            console.error('Error downloading file', err);
+            return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send('Error downloading file');
+          });
+        } else {
+          return res.status(HttpStatus.NOT_FOUND).send('File not found');
+        }
+      } else {
+        return res.status(HttpStatus.NOT_FOUND).send('File not found');
+      }
+    } else {
+
+      return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Cannot found record!' });
+    }
+  }
+
   async findByCode(res, request, body) {
     const code = body?.code;
     if (code) {

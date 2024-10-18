@@ -2,14 +2,14 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { HistoryTryNo } from 'src/database/entity/history_tryno.entity';
 import { OutputJig } from 'src/database/entity/output_jig.entity';
-import { Repository } from 'typeorm';
+import { IsNull, MoreThanOrEqual, Not, Repository } from 'typeorm';
 
 @Injectable()
 export class HistoryTryNoService {
   constructor(
     @InjectRepository(HistoryTryNo)
     private repository: Repository<HistoryTryNo>,
-  ) {}
+  ) { }
 
   async all() {
     return await this.repository.find({});
@@ -109,7 +109,7 @@ export class HistoryTryNoService {
           receivingCompleted: true,
           outputEdit: true,
           wearingPlan: true,
-          departEdit:true,
+          departEdit: true,
           remark: true,
           createAt: true,
           modificationCompany: {
@@ -117,7 +117,7 @@ export class HistoryTryNoService {
             companyName: true,
           },
         },
-        where: { outputJig: { outputJigID } },
+        where: { outputJig: { outputJigID }, tryNum: MoreThanOrEqual(1) },
         relations: ['modificationCompany'],
         order: { createAt: 'DESC' },
       });

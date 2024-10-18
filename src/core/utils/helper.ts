@@ -5,6 +5,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import dayjs from 'dayjs';
 import { Between } from 'typeorm';
+import * as Jimp from 'jimp';
 
 const SALTROUNDS = 10;
 
@@ -126,95 +127,9 @@ export const dirSize = async (dir) => {
     .reduce((i, size) => i + size, 0);
 };
 
-// export const handleFiles = async (
-//   files: Express.Multer.File[],
-//   folderName: string = '',
-// ) => {
-//   if (!files || files?.length <= 0) {
-//     return [];
-//   }
-
-//   const arrFile = files.map((file) => {
-//     if (file) {
-//       try {
-//         const now = new Date();
-//         const year = now.getFullYear();
-//         const month = String(now.getMonth() + 1).padStart(2, '0'); // Tháng bắt đầu từ 0
-//         const day = String(now.getDate()).padStart(2, '0');
-//         const folderUpload = path.join(
-//           folderName ? folderName : 'uploads',
-//           `${day}${month}${year}`,
-//         );
-//         const uploadPath = path.join(
-//           process.env.UPLOAD_FOLDER || './public',
-//           folderUpload,
-//         );
-//         // Tạo thư mục nếu chưa tồn tại
-//         fs.mkdirSync(uploadPath, { recursive: true });
-
-//         const uniqueSuffix = Array(32)
-//           .fill(null)
-//           .map(() => Math.round(Math.random() * 16).toString(16))
-//           .join('');
-//         const extension = getExtenstionFromOriginalName(file?.originalname);
-//         const fileName = `${uniqueSuffix}${extension ? '.' + extension : ''}`;
-//         const urlStoreDB = path.join(folderUpload, fileName);
-//         const targetPath = path.join(uploadPath, fileName);
-
-//         const readableStream = fs.createReadStream(file?.path);
-//         const writableStream = fs.createWriteStream(targetPath);
-
-//         readableStream.pipe(writableStream);
-
-//         readableStream.on('error', (error) => {
-//           console.error('Error reading file:', error);
-//           fs.stat(file?.path, function (err, stats) {
-//             if (err) {
-//               return console.error(err);
-//             }
-//             fs.unlinkSync(file?.path); // Xóa tệp tạm thời nếu có lỗi
-//           });
-//         });
-
-//         writableStream.on('error', (error) => {
-//           console.error('Error writing file:', error);
-//           fs.stat(file?.path, function (err, stats) {
-//             if (err) {
-//               return console.error(err);
-//             }
-//             fs.unlinkSync(file?.path); // Xóa tệp tạm thời nếu có lỗi
-//           });
-//           fs.stat(file?.path, function (err, stats) {
-//             if (err) {
-//               return console.error(err);
-//             }
-//             fs.unlinkSync(targetPath); // Xóa tệp đích nếu có lỗi
-//           });
-//         });
-
-//         writableStream.on('finish', () => {
-//           fs.stat(file?.path, function (err, stats) {
-//             if (err) {
-//               return console.error(err);
-//             }
-//             fs.unlinkSync(file?.path); // Xóa tệp tạm thời khi barn ghi hoan tat
-//           });
-//         });
-//         return { ...file, urlStoreDB };
-//       } catch (error) {
-//         console.error('Error handling file:', error);
-//         throw error;
-//       }
-//     }
-//   });
-//   return arrFile;
-// };
-
-
-// new function handle files
 export const handleFiles = async (
   files: Express.Multer.File[],
-  folderName: string = '',
+  folderName: string = ''
 ) => {
   if (!files || files?.length <= 0) {
     return [];
@@ -307,6 +222,161 @@ export const handleFiles = async (
   return arrFile;
 };
 
+
+// // new function handle files
+// export const handleFiles = async (
+//   files: Express.Multer.File[],
+//   folderName: string = '',
+//   compressImage: boolean = false
+// ) => {
+//   if (!files || files?.length <= 0) {
+//     return [];
+//   }
+
+//   const arrPaths = [];
+
+//   const arrFile = await Promise.all(files.map(async (file) => {
+//     if (file) {
+//       try {
+//         const now = new Date();
+//         const year = now.getFullYear();
+//         const month = String(now.getMonth() + 1).padStart(2, '0'); // Tháng bắt đầu từ 0
+//         const day = String(now.getDate()).padStart(2, '0');
+//         const folderUpload = path.join(
+//           folderName ? folderName : 'uploads',
+//           `${day}${month}${year}`,
+//         );
+//         const uploadPath = path.join(
+//           process.env.UPLOAD_FOLDER || './public',
+//           folderUpload,
+//         );
+
+//         // Tạo thư mục nếu chưa tồn tại
+//         try {
+//           fs.mkdirSync(uploadPath, { recursive: true });
+//         } catch (mkdirErr) {
+//           console.error(`Error creating directory ${uploadPath}:`, mkdirErr);
+//           throw mkdirErr; // Dừng lại nếu không thể tạo thư mục
+//         }
+
+//         const uniqueSuffix = Array(32)
+//           .fill(null)
+//           .map(() => Math.round(Math.random() * 16).toString(16))
+//           .join('');
+//         const extension = getExtenstionFromOriginalName(file?.originalname);
+//         const fileName = `${uniqueSuffix}${extension ? '.' + extension : ''}`;
+//         const urlStoreDB = path.join(folderUpload, fileName);
+//         const targetPath = path.join(uploadPath, fileName);
+
+//         let finalFileSize = 0;
+
+//         // Nén ảnh chỉ nếu file là ảnh (jpg, jpeg, png, webp)
+//         const validImageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+//         if (validImageExtensions.includes(extension.toLowerCase()) && compressImage) {
+//           try {
+//             // Sử dụng Sharp để nén ảnh
+//             await sharp(file.path)
+//               .jpeg({ quality: 80 }) // Điều chỉnh chất lượng nén cho JPEG
+//               .toFile(targetPath)
+
+//             // Lấy kích thước file nén
+//             const stats = fs.statSync(targetPath);
+//             finalFileSize = stats.size; // Kích thước thật của file sau khi nén (tính bằng bytes)
+//           } catch (sharpErr) {
+//             console.error(`Error compressing image:`, sharpErr);
+//             throw sharpErr; // Nếu có lỗi trong quá trình nén
+//           }
+//           arrPaths.push(file?.path);
+//         } else {
+//           // Nếu không phải file ảnh, chỉ cần sao chép file
+//           const readableStream = fs.createReadStream(file?.path);
+//           const writableStream = fs.createWriteStream(targetPath);
+
+//           readableStream.pipe(writableStream);
+
+//           // Xử lý lỗi khi đọc file
+//           readableStream.on('error', (error) => {
+//             console.error('Error reading file:', error);
+//             try {
+//               if (fs.existsSync(file?.path)) {
+//                 console.error('Error test');
+//                 fs.unlinkSync(file?.path); // Xóa tệp tạm thời nếu có lỗi
+//               }
+//             } catch (unlinkErr) {
+//               console.error(`Error deleting temporary file ${file?.path}:`, unlinkErr);
+//             }
+//           });
+
+//           // Xử lý lỗi khi ghi file
+//           writableStream.on('error', (error) => {
+//             console.error('Error writing file:', error);
+//             try {
+//               if (fs.existsSync(file?.path)) {
+//                 console.error('Error test');
+
+//                 fs.unlinkSync(file?.path); // Xóa tệp tạm thời nếu có lỗi
+//               }
+//               if (fs.existsSync(targetPath)) {
+//                 fs.unlinkSync(targetPath); // Xóa tệp đích nếu có lỗi
+//               }
+//             } catch (unlinkErr) {
+//               console.error(`Error deleting file ${file?.path} or ${targetPath}:`, unlinkErr);
+//             }
+//           });
+
+//           // Hoàn thành quá trình ghi tệp
+//           writableStream.on('finish', () => {
+//             try {
+//               if (fs.existsSync(file?.path)) {
+//                 console.error('Error test');
+
+//                 fs.unlinkSync(file?.path); // Xóa tệp tạm thời sau khi ghi hoàn tất
+//                 console.log(`Successfully deleted temporary file: ${file?.path}`);
+//               }
+
+//               // Lấy kích thước file sao chép
+//               const stats = fs.statSync(targetPath);
+//               finalFileSize = stats.size; // Kích thước thật của file sao chép
+//             } catch (unlinkErr) {
+//               console.error(`Error deleting temporary file ${file?.path}:`, unlinkErr);
+//             }
+//           });
+//         }
+
+//         try {
+//           if (fs.existsSync(file?.path)) {
+//             console.error('Error test....');
+//             fs.unlinkSync(file?.path); // Xóa tệp tạm thời nếu có lỗi
+//           }
+//         } catch (unlinkErr) {
+//           console.error(`Error deleting temporary file ${file?.path}:`, unlinkErr);
+//         }
+//         return {
+//           ...file,
+//           urlStoreDB,
+//           size: finalFileSize // Trả về kích thước file thực sau khi nén hoặc sao chép
+//         };
+//       } catch (error) {
+//         console.error('Error handling file:', error);
+//         throw error; // Đẩy lỗi ra ngoài nếu không thể xử lý tệp
+//       }
+//     }
+//   }));
+//   if (arrPaths?.length > 0) {
+//     arrPaths.map((item) => {
+//       if (fs.existsSync(item)) {
+//         try {
+//           fs.unlinkSync(item);
+
+//         } catch (error) {
+//           console.error('line 316',error);
+
+//         }
+//       }
+//     })
+//   }
+//   return arrFile;
+// };
 
 export function isDateDifferent(date1, date2) {
   const d1 = new Date(date1);
@@ -527,7 +597,7 @@ export const getAllFilesInFolder = function (dirPath: string, arrayOfFiles?: Arr
     });
     return arrayOfFiles;
   } catch (error) {
-    console.log('error getAllFilesInFolder():',error);
+    console.log('error getAllFilesInFolder():', error);
     return []
   }
 };

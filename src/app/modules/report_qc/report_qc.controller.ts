@@ -62,6 +62,7 @@ export class ReportQCController {
     const arrFileRequestPromiss = handleFiles(fileRequest, 'uploadsQC');
     const arrFileReplyPromiss = handleFiles(fileReply, 'uploadsQC');
     const arrImagePromiss = handleFiles(images, 'uploadsQC');
+
     const values = await Promise.all([
       arrFileRequestPromiss,
       arrFileReplyPromiss,
@@ -178,7 +179,7 @@ export class ReportQCController {
   ) {
     return await this.service.exportExcelStatistic(res, request, body);
   }
-  
+
   @UseGuards(IsVNGuard)
   @UseGuards(AuthGuard)
   @Post('/exportExcel-report')

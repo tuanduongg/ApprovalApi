@@ -6,9 +6,9 @@ export class LogIPMiddleware implements NestMiddleware {
     private logger = new Logger();
 
     use(request: Request, response: Response, next: NextFunction): void {
-        const { ip, method, originalUrl } = request;
+        const { body } = request;
         response.on("finish", () => {
-            const msg = `${ip} ${method} ${originalUrl}`;
+            const msg = `"${body?.username}" login`;
             this.logger.log(msg);
         });
         next();
