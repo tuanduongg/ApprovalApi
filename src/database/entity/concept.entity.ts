@@ -34,10 +34,16 @@ export class Concept {
   @Column({ nullable: true })
   approval: string; // nguoi duyet
 
+  @Column({ nullable: true, default: null })
+  deleteAt: Date;
+
+  @Column({ nullable: true, default: null })
+  deleteBy: string;
+
   @ManyToOne(() => CategoryConcept, (ref) => ref.concepts)
   @JoinColumn({ name: 'categoryId', referencedColumnName: 'categoryId' })
   category: CategoryConcept;
-  
+
   @ManyToOne(() => User, (ref) => ref.concepts)
   @JoinColumn({ name: 'userId', referencedColumnName: 'userId' })
   user: User;

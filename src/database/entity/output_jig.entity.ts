@@ -35,6 +35,10 @@ export class OutputJig {
   shipDate: Date;
  
 
+  @Column({ nullable: true, type: Date })
+  developDate: Date;
+ 
+
   @Column({ nullable: true })
   productionStatus: string;
 
@@ -44,13 +48,19 @@ export class OutputJig {
   @Column({ nullable: true })
   createBy: string;
 
+  @Column({ nullable: true })
+  deleteAt: Date;
+
+  @Column({ nullable: true })
+  deleteBy: string;
+
   @ManyToOne(() => ModelMold, (ref) => ref.OutputJigs)
   @JoinColumn({ name: 'modelID', referencedColumnName: 'modelID' })
   model: ModelMold;
 
-  @OneToMany(() => HistoryOutJig, (ref) => ref.outputJig)
+  @OneToMany(() => HistoryOutJig, (ref) => ref.outputJig, { cascade: ['insert', 'update'] })
   histories: HistoryOutJig[];
 
-  @OneToMany(() => HistoryTryNo, (ref) => ref.outputJig)
+  @OneToMany(() => HistoryTryNo, (ref) => ref.outputJig, { cascade: ['insert', 'update'] })
   historyTryNo: HistoryTryNo[];
 }

@@ -100,7 +100,6 @@ export class FileReportQCService {
   }
   //add array files
   async add(files: any, userUpload: string = '', reportQc: ReportQC) {
-    console.log('files 102', files);
     if (files && files?.length > 0) {
       const arrFile = [];
       files.map((file) => {

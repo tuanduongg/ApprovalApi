@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Concept } from 'src/database/entity/concept.entity';
-import { Between, In, Like, Repository } from 'typeorm';
+import { Between, In, IsNull, Like, Not, Repository } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as archiver from 'archiver';
@@ -15,6 +15,7 @@ import { FileConceptService } from '../file_concept/file_concept.service';
 import { CategoryConcept } from 'src/database/entity/category_concept.entity';
 import { User } from 'src/database/entity/user.entity';
 import { HistoryConceptService } from '../history_concept/history_concept.service';
+import { Cron } from '@nestjs/schedule';
 
 @Injectable()
 export class ConceptService {
@@ -23,7 +24,7 @@ export class ConceptService {
     private repository: Repository<Concept>,
     private readonly fileConceptService: FileConceptService,
     private readonly historyConceptService: HistoryConceptService,
-  ) { }
+  ) {}
 
   async all(res, request, body) {
     const {
@@ -43,18 +44,22 @@ export class ConceptService {
       {
         regisDate: Between(startDate, endDate),
         code: Like(`%${search?.trim()}%`),
+        deleteAt: IsNull(),
       },
       {
         regisDate: Between(startDate, endDate),
         plName: Like(`%${search?.trim()}%`),
+        deleteAt: IsNull(),
       },
       {
         regisDate: Between(startDate, endDate),
         modelName: Like(`%${search?.trim()}%`),
+        deleteAt: IsNull(),
       },
       {
         regisDate: Between(startDate, endDate),
         productName: Like(`%${search?.trim()}%`),
+        deleteAt: IsNull(),
       },
     ];
 
@@ -246,23 +251,22 @@ export class ConceptService {
         if (fs.existsSync(filePath)) {
           const fileStream = fs.createReadStream(filePath);
 
-
           res.status(200);
           fileStream.pipe(res);
           res.set({
             'Content-Type': 'application/octet-stream',
-            'Content-Disposition': `attachment; filename="${encodeURI(file?.fileName)}"`
+            'Content-Disposition': `attachment; filename="${encodeURI(file?.fileName)}"`,
           });
           res.on('finish', () => {
             // return res;
           });
           // Pipe stream và lắng nghe các sự kiện
 
-
-
           fileStream.on('error', (err) => {
             console.error('Error downloading file', err);
-            return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send('Error downloading file');
+            return res
+              .status(HttpStatus.INTERNAL_SERVER_ERROR)
+              .send('Error downloading file');
           });
         } else {
           return res.status(HttpStatus.NOT_FOUND).send('File not found');
@@ -271,8 +275,9 @@ export class ConceptService {
         return res.status(HttpStatus.NOT_FOUND).send('File not found');
       }
     } else {
-
-      return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Cannot found record!' });
+      return res
+        .status(HttpStatus.BAD_REQUEST)
+        .send({ message: 'Cannot found record!' });
     }
   }
 
@@ -373,6 +378,28 @@ export class ConceptService {
         .send({ message: 'Save change fail!' });
     }
   }
+
+  async softDelete(res, request, body) {
+    const conceptId = body?.conceptId;
+    if (conceptId) {
+      const concept = await this.repository.findOneBy({ conceptId });
+      if (concept) {
+        concept.deleteAt = new Date();
+        concept.deleteBy = request?.user?.userName;
+        await this.repository.save(concept);
+        return res
+          .status(HttpStatus.OK)
+          .send({ message: 'Deleted successful!' });
+      }
+      return res
+        .status(HttpStatus.BAD_REQUEST)
+        .send({ message: 'Record not found!' });
+    }
+    return res
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ message: 'Id not found!' });
+  }
+
   async delete(res, request, body) {
     const conceptId = body?.conceptId;
     if (conceptId) {
@@ -640,5 +667,47 @@ export class ConceptService {
     });
     archive.finalize();
     return archive;
+  }
+
+  // chạy lúc 00:05 hằng ngày để xóa cứng các bản ghi đã được xóa mềm  thời gian hiện tại 6 tháng
+  @Cron('5 0 * * *')
+  async handleCronDeleteConcept() {
+    //6 tháng xóa 1 lần
+    const numMonthDelete = process.env.MONTH_DELETE
+      ? parseInt(process.env.MONTH_DELETE)
+      : 6;
+
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - numMonthDelete);
+    console.log('Start Cron job(Approval) chạy lúc 00h05 hằng ngày');
+    const data = await this.repository
+      .createQueryBuilder()
+      .where('deleteAt < :sixMonthsAgo', { sixMonthsAgo })
+      .getMany();
+    if (data?.length > 0) {
+      data.map(async (concept) => {
+        try {
+          const promisDeleteFile = this.fileConceptService.deleteByConcept(
+            concept?.conceptId,
+          );
+          const promisDeleteHis = this.historyConceptService.deleteByConcept(
+            concept?.conceptId,
+          );
+          await Promise.all([promisDeleteFile, promisDeleteHis]);
+          const oldID = concept?.conceptId;
+          await this.repository.remove(concept);
+          console.log('Deleted:', {
+            id: oldID,
+            code: concept?.code,
+          });
+
+          return true;
+        } catch (error) {
+          console.log(error);
+          return false;
+        }
+      });
+    }
+    console.log('End Cron job(Approval) chạy lúc 00h05 hằng ngày');
   }
 }

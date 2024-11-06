@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import dayjs from 'dayjs';
 import { Between } from 'typeorm';
 import * as Jimp from 'jimp';
+import { Company } from 'src/database/entity/company.entity';
 
 const SALTROUNDS = 10;
 
@@ -129,7 +130,7 @@ export const dirSize = async (dir) => {
 
 export const handleFiles = async (
   files: Express.Multer.File[],
-  folderName: string = ''
+  folderName: string = '',
 ) => {
   if (!files || files?.length <= 0) {
     return [];
@@ -181,7 +182,10 @@ export const handleFiles = async (
               fs.unlinkSync(file?.path); // Xóa tệp tạm thời nếu có lỗi
             }
           } catch (unlinkErr) {
-            console.error(`Error deleting temporary file ${file?.path}:`, unlinkErr);
+            console.error(
+              `Error deleting temporary file ${file?.path}:`,
+              unlinkErr,
+            );
           }
         });
 
@@ -196,7 +200,10 @@ export const handleFiles = async (
               fs.unlinkSync(targetPath); // Xóa tệp đích nếu có lỗi
             }
           } catch (unlinkErr) {
-            console.error(`Error deleting file ${file?.path} or ${targetPath}:`, unlinkErr);
+            console.error(
+              `Error deleting file ${file?.path} or ${targetPath}:`,
+              unlinkErr,
+            );
           }
         });
 
@@ -208,7 +215,10 @@ export const handleFiles = async (
               console.log(`Successfully deleted temporary file: ${file?.path}`);
             }
           } catch (unlinkErr) {
-            console.error(`Error deleting temporary file ${file?.path}:`, unlinkErr);
+            console.error(
+              `Error deleting temporary file ${file?.path}:`,
+              unlinkErr,
+            );
           }
         });
 
@@ -221,7 +231,6 @@ export const handleFiles = async (
   });
   return arrFile;
 };
-
 
 // // new function handle files
 // export const handleFiles = async (
@@ -438,6 +447,7 @@ export const LIST_COL_MOLD_REPORT_ID = [
     width: 20,
   },
   { header: '양산업체(Cty SX)', key: 'massCompany', width: 20 },
+  { header: '개발등록(RnD)', key: 'developDate', width: 20 },
   {
     header: '양산업체입고(Thời gian)',
     key: 'shipMassCompany',
@@ -466,7 +476,7 @@ export const LIST_COL_MOLD_REPORT_ID = [
 export function getDepartmentEditMold(num: number) {
   let text = '';
   switch (
-  num //phat trien
+    num //phat trien
   ) {
     case 1:
       text = '개발수정';
@@ -487,7 +497,6 @@ export const LIST_COL_HISTORY = [
   { header: 'User', key: 'user', width: 10 },
   { header: 'Time', key: 'time', width: 28 },
   { header: 'Content', key: 'content', width: 20 },
-
 ];
 export const LIST_COL_MOLD_REPORT = [
   { header: 'Category', key: 'category', width: 10 },
@@ -505,6 +514,7 @@ export const LIST_COL_MOLD_REPORT = [
     width: 20,
   },
   { header: '양산업체(Cty SX)', key: 'massCompany', width: 20 },
+  { header: '개발등록 (RnD)', key: 'developDate', width: 20 },
   {
     header: '양산업체입고(Thời gian)',
     key: 'shipMassCompany',
@@ -582,8 +592,10 @@ export const BetweenDates = (
   return Between(from, to);
 };
 
-
-export const getAllFilesInFolder = function (dirPath: string, arrayOfFiles?: Array<any>) {
+export const getAllFilesInFolder = function (
+  dirPath: string,
+  arrayOfFiles?: Array<any>,
+) {
   try {
     const files = fs.readdirSync(dirPath);
     arrayOfFiles = arrayOfFiles || [];
@@ -597,7 +609,86 @@ export const getAllFilesInFolder = function (dirPath: string, arrayOfFiles?: Arr
     });
     return arrayOfFiles;
   } catch (error) {
-    console.log('error getAllFilesInFolder():', error);
-    return []
+    return [];
   }
+};
+export const getTryNum = (tryNum: any) => {
+  const newTryNum = `${tryNum}`?.trim()?.toLocaleLowerCase();
+  let result = null;
+  if (newTryNum.includes('t')) {
+    const getOriginNum = `${newTryNum}`.replace('t', '');
+    result = parseInt(getOriginNum);
+  } else {
+    result = parseInt(`${tryNum}`);
+  }
+  return result;
+};
+export const getNumMoldNo = (moldNo: any, parse: boolean = true) => {
+  if (`${moldNo}`?.includes('#')) {
+    return parse
+      ? parseInt(`${moldNo}`.replace('#', ''))
+      : `${moldNo}`.replace('#', '');
+  } else {
+    return parse ? parseInt(`${moldNo}`) : `${moldNo}`;
+  }
+};
+
+export const setCurrentTryNum = (arr: any[], itemNew: any) => {
+  if (arr && arr?.length > 0) {
+    const newArr = [...arr, itemNew];
+    let max = 0;
+    const result = newArr.map((item) => {
+      if (item?.tryNum > max) {
+        max = item?.tryNum;
+        item.currentTry = true;
+      } else {
+        item.currentTry = false;
+      }
+      return item;
+    });
+    return result;
+  }
+  return [];
+};
+
+export const makeDateImportExcelOutputJig = (
+  itemNew: any,
+  obj: any,
+  request,
+) => {
+  const newData = {
+    tryNum: getTryNum(itemNew?.tryNo),
+    currentTry: true,
+    modificationCompany: itemNew?.modificationCompany,
+    receivingCompleted: new Date(itemNew?.receivingCompleted),
+    outputEdit: new Date(itemNew?.outputEdit),
+    wearingPlan: new Date(itemNew?.wearingPlan),
+    remark: itemNew?.historyEdit,
+    createAt: new Date(),
+    createBy: request?.user?.userName,
+  };
+  if (!newData?.tryNum) {
+    return obj?.historyTryNo || [];
+  }
+  if (obj && obj?.historyTryNo?.length > 0) {
+    return setCurrentTryNum(obj?.historyTryNo, newData);
+  } else {
+    return [newData];
+  }
+};
+export const getCompanyIDByCode = (code: string, companies: Company[]) => {
+  const result = companies.find((item) => {
+    return (
+      item?.companyCode?.toLocaleLowerCase() ===
+      code?.trim()?.toLocaleLowerCase()
+    );
+  });
+  return result || null;
+};
+
+export const isObjectCellExcel = (value: any) => {
+  if (typeof value === 'object' && !Array.isArray(value) && value !== null) {
+    return value?.result;
+  }
+  return value;
 };

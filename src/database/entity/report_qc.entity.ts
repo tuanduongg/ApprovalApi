@@ -93,6 +93,12 @@ export class ReportQC {
   @Column({ nullable: true })
   updateby: string;
 
+  @Column({ nullable: true, default: null })
+  deleteAt: Date;
+
+  @Column({ nullable: true, default: null })
+  deleteBy: string;
+
   //remark
   @Column({ type: 'ntext', nullable: true })
   remark: string;

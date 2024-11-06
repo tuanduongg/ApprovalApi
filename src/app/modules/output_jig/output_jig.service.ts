@@ -3,22 +3,38 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Company } from 'src/database/entity/company.entity';
 import { ModelMold } from 'src/database/entity/model_mold.entity';
 import { OutputJig } from 'src/database/entity/output_jig.entity';
-import { FindManyOptions, In, Like, Repository } from 'typeorm';
+import {
+  FindManyOptions,
+  In,
+  LessThanOrEqual,
+  Like,
+  Repository,
+} from 'typeorm';
 import { CompanyService } from '../company/company.service';
 import {
   checkStatusOnChange,
   formatDateFromDB,
+  getCompanyIDByCode,
   getDepartmentEditMold,
+  getNumMoldNo,
   getStatusMoldName,
   isDateDifferent,
-  LIST_COL_HISTORY,
+  isObjectCellExcel,
   LIST_COL_MOLD_REPORT,
   LIST_COL_MOLD_REPORT_ID,
+  makeDateImportExcelOutputJig,
 } from 'src/core/utils/helper';
 import { HistoryOutJigService } from '../history_out_jig/history_concept.service';
 import { HistoryTryNoService } from '../history_tryno/history_tryno.service';
 import { HistoryTryNo } from 'src/database/entity/history_tryno.entity';
+import { DetailMoldBeforeService } from '../detail_mold_before/detail_mold_before.service';
+import { DetailMoldAfterService } from '../detail_mold_after/detail_mold_after.service';
+import { Cron } from '@nestjs/schedule';
 const ExcelJS = require('exceljs');
+import { join } from 'path';
+
+import { HistoryOutJig } from 'src/database/entity/history_out_jig.entity';
+import { existsSync, readFileSync, unlinkSync } from 'fs';
 
 @Injectable()
 export class OutputJigService {
@@ -29,6 +45,8 @@ export class OutputJigService {
     private readonly companyService: CompanyService,
     private readonly historyService: HistoryOutJigService,
     private readonly historyTrynoService: HistoryTryNoService,
+    private readonly detailMoldBeforeService: DetailMoldBeforeService,
+    private readonly detailMoldAfterService: DetailMoldAfterService,
   ) {
     this.ARR_PROP_OBJECT_COMPANY = [
       'manufacturer',
@@ -100,6 +118,7 @@ export class OutputJigService {
     // }
     // newModel.wearingPlan = newBody?.wearingPlan;
 
+    newModel.developDate = newBody?.developDate;
     newModel.shipDate = newBody?.shipDate;
     newModel.shipMassCompany = newBody?.shipMassCompany;
     // newModel.outputEdit = newBody?.outputEdit;
@@ -175,6 +194,7 @@ export class OutputJigService {
         'outputJig.shipMassCompany',
         'outputJig.shipDate',
         'outputJig.productionStatus',
+        'outputJig.developDate',
         'model.modelID',
         'category.categoryId',
         'category.categoryName',
@@ -292,6 +312,10 @@ export class OutputJigService {
         findModel.shipDate = newBody?.shipDate;
       }
 
+      if (isDateDifferent(findModel.developDate, newBody?.developDate)) {
+        arrTextHistory.push('개발등록(RnD)');
+        findModel.developDate = newBody?.developDate;
+      }
       if (
         isDateDifferent(findModel.shipMassCompany, newBody?.shipMassCompany)
       ) {
@@ -302,7 +326,6 @@ export class OutputJigService {
       let currentTryFind = findModel.historyTryNo.find(
         (item) => item?.historyTryNoId === newBody?.historyTryNoId,
       );
-
       //
       let checkIsUpdateTryNo = '';
       if (currentTryFind) {
@@ -421,9 +444,10 @@ export class OutputJigService {
       const oldStatus = find?.productionStatus;
       if (find) {
         let historyRemark = `${getStatusMoldName(oldStatus)} -> ${getStatusMoldName(productionStatus)}`;
-        const departEdit = checkStatusOnChange(find?.productionStatus, productionStatus);
-        console.log('departEdit', departEdit);
-
+        const departEdit = checkStatusOnChange(
+          find?.productionStatus,
+          productionStatus,
+        );
         if (departEdit !== 0) {
           const saveTry = await this.historyTrynoService.inCrementTryNum(
             outputJigID,
@@ -434,7 +458,7 @@ export class OutputJigService {
             const { newTryNum, oldTryNum } = saveTry;
             historyRemark += `(T${oldTryNum} -> T${newTryNum})`;
           } else {
-            historyRemark += `(T0 -> T1)`
+            historyRemark += `(T0 -> T1)`;
           }
         }
         find.productionStatus = productionStatus;
@@ -449,6 +473,24 @@ export class OutputJigService {
           request,
         );
         return res.status(HttpStatus.OK).send({ message: 'Saved successful!' });
+      }
+    }
+    return res
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ message: 'Not found record!' });
+  }
+
+  async softDelete(body, request, res) {
+    const { outputJigID } = body;
+    if (outputJigID) {
+      const find = await this.repository.findOneBy({ outputJigID });
+      if (find) {
+        find.deleteAt = new Date();
+        find.deleteBy = request?.user?.userName;
+        await this.repository.save(find);
+        return res
+          .status(HttpStatus.OK)
+          .send({ message: 'Delete successful!' });
       }
     }
     return res
@@ -488,14 +530,15 @@ export class OutputJigService {
           type: true,
           model: true,
           description: true,
-        }
-      }, relations: ['model'], where: { outputJigID }
+        },
+      },
+      relations: ['model'],
+      where: { outputJigID },
     });
 
     const data = await this.historyService.findByOutputJig(outputJigID);
     const startRownumTable: number = 6;
     if (data?.length > 0) {
-
       const workbook = new ExcelJS.Workbook();
       workbook.modified = new Date();
       const worksheet = workbook.addWorksheet('Sheet1');
@@ -505,11 +548,13 @@ export class OutputJigService {
       worksheet.addRow(['Project Name', outputJig?.model?.projectName]);
       worksheet.addRow(['구분', outputJig?.model?.type]);
       worksheet.addRow(['Description', outputJig?.model?.description]);
-      worksheet.addRow(['Mold No.', outputJig?.moldNo ? `#${outputJig?.moldNo}` : '']);
+      worksheet.addRow([
+        'Mold No.',
+        outputJig?.moldNo ? `#${outputJig?.moldNo}` : '',
+      ]);
       for (let index = 2; index <= startRownumTable; index++) {
         worksheet.mergeCells(`B${index}:D${index}`);
         worksheet.getCell(`A${index}`).font = { bold: true };
-
       }
 
       // Thiết lập font bold cho các ô A1, A2, và A3
@@ -518,13 +563,7 @@ export class OutputJigService {
       worksheet.getColumn(5).width = 30;
       worksheet.getColumn(4).width = 20;
       worksheet.addRow({});
-      worksheet.addRow([
-        '#',
-        'Type',
-        'User',
-        'Time',
-        'Content'
-      ]);
+      worksheet.addRow(['#', 'Type', 'User', 'Time', 'Content']);
       // Thiết lập font bold và màu nền xanh cho hàng thứ 8
       const row6 = worksheet.getRow(startRownumTable + 2);
       row6.font = { bold: true, color: { argb: 'FFFFFF' } }; // Thiết lập font bold
@@ -538,7 +577,13 @@ export class OutputJigService {
 
       data.map(async (item, index) => {
         const arr = [];
-        arr.push(index + 1, item?.historyType, item?.historyUsername, `${formatDateFromDB(item?.historyTime, true)}`, item?.historyRemark);
+        arr.push(
+          index + 1,
+          item?.historyType,
+          item?.historyUsername,
+          `${formatDateFromDB(item?.historyTime, true)}`,
+          item?.historyRemark,
+        );
         await worksheet.addRow(arr);
         // {
         //   time: `${formatDateFromDB(item?.historyTime, true)}`,
@@ -547,7 +592,7 @@ export class OutputJigService {
         //   user: item?.historyUsername,
         //   content: item?.historyRemark
         // }
-      })
+      });
       // // Căn giữa và thêm border cho các ô có dữ liệu
       worksheet.eachRow((row, rowIndex) => {
         row.eachCell({ includeEmpty: true }, (cell) => {
@@ -565,7 +610,6 @@ export class OutputJigService {
             right: { style: 'thin' },
           };
         });
-
       });
       worksheet.properties.defaultRowHeight = 15;
 
@@ -582,10 +626,6 @@ export class OutputJigService {
       );
       res.end(buffer);
     }
-
-
-
-
   }
   async getAll2(body: any, showPaginate: boolean = true) {
     const {
@@ -601,7 +641,8 @@ export class OutputJigService {
     const newPage = +page || 0;
     const skip = newPage * take;
 
-    let whereClause = 'outputJig.moldNo LIKE :search';
+    let whereClause =
+      'outputJig.moldNo LIKE :search AND outputJig.deleteAt IS NULL';
     const parameters: any = { search: `%${search}%` };
 
     // Apply search conditions for `model` fields
@@ -652,6 +693,7 @@ export class OutputJigService {
         'outputJig.shipMassCompany',
         'outputJig.shipDate',
         'outputJig.productionStatus',
+        'outputJig.developDate',
         'model.modelID',
         'model.projectName',
         'model.type',
@@ -846,8 +888,14 @@ export class OutputJigService {
         manufacturer: item?.manufacturer?.companyCode,
         shipArea: item?.shipArea?.companyCode,
         massCompany: item?.massCompany?.companyCode,
-        // modificationCompany: item?.modificationCompany?.companyCode,
-        // wearingPlan: formatDateFromDB(item?.wearingPlan,false),
+        modificationCompany: item?.historyTryNo[0]?.modificationCompany
+          ? item?.historyTryNo[0]?.modificationCompany.companyCode
+          : '',
+        wearingPlan: formatDateFromDB(
+          item?.historyTryNo[0]?.wearingPlan,
+          false,
+        ),
+
         category: item?.model?.category?.categoryName,
         model: item?.model?.model,
         project: item?.model?.projectName,
@@ -855,9 +903,13 @@ export class OutputJigService {
         description: item?.model?.description,
         productionStatus: getStatusMoldName(item?.productionStatus),
         shipDate: formatDateFromDB(item?.shipDate, false),
+        developDate: formatDateFromDB(item?.developDate, false),
         shipMassCompany: formatDateFromDB(item?.shipMassCompany, false),
-        // outputEdit: formatDateFromDB(item?.outputEdit, false),
-        // receivingCompleted: formatDateFromDB(item?.receivingCompleted, false),
+        outputEdit: formatDateFromDB(item?.historyTryNo[0]?.outputEdit, false),
+        receivingCompleted: formatDateFromDB(
+          item?.historyTryNo[0]?.receivingCompleted,
+          false,
+        ),
         moldNo: item?.moldNo ? `#${item?.moldNo}` : '',
         tryNo: item?.historyTryNo[0] ? `T${item?.historyTryNo[0]?.tryNum}` : '',
         historyEdit: item?.historyTryNo[0]
@@ -912,6 +964,7 @@ export class OutputJigService {
         moldNo: true,
         shipMassCompany: true,
         shipDate: true,
+        developDate: true,
         historyTryNo: {
           historyTryNoId: true,
           tryNum: true,
@@ -984,6 +1037,7 @@ export class OutputJigService {
         project: result?.model?.projectName,
         type: result?.model?.type,
         description: result?.model?.description,
+        developDate: formatDateFromDB(result?.developDate, false),
         shipDate: formatDateFromDB(result?.shipDate, false),
         shipMassCompany: formatDateFromDB(result?.shipMassCompany, false),
         outputEdit: formatDateFromDB(item?.outputEdit, false),
@@ -991,12 +1045,14 @@ export class OutputJigService {
         moldNo: result?.moldNo ? `#${result?.moldNo}` : '',
         tryNo: item?.tryNum ? `T${item?.tryNum}` : '',
         historyEdit: item?.remark ?? '',
-        departEdit: item?.departEdit ? getDepartmentEditMold(item?.departEdit) : '',
+        departEdit: item?.departEdit
+          ? getDepartmentEditMold(item?.departEdit)
+          : '',
       });
     }
     // // Căn giữa và thêm border cho các ô có dữ liệu
-    worksheet.eachRow((row, rowNumber) => {
-      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+    worksheet.eachRow((row) => {
+      row.eachCell({ includeEmpty: true }, (cell) => {
         cell.alignment = {
           vertical: 'middle',
           horizontal: 'center',
@@ -1021,5 +1077,280 @@ export class OutputJigService {
       'attachment; filename=' + 'ReportABC.xlsx',
     );
     res.end(buffer);
+  }
+  async exportExcelDetailList(res, request, body) {
+    const dataAfterPromiss = this.detailMoldAfterService.getAll({}, false);
+    const dataBeforePromiss = this.detailMoldBeforeService.getAll({}, false);
+    const [dataAfter, dataBefore] = await Promise.all([
+      dataAfterPromiss,
+      dataBeforePromiss,
+    ]);
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.modified = new Date();
+    const worksheet = workbook.addWorksheet('Sheet1');
+    const worksheetTwo = workbook.addWorksheet('Sheet2');
+    // worksheet.properties.defaultRowHeight = 15;
+    await worksheet.addRow({});
+    await worksheet.addRow({});
+    await worksheet.addRow([
+      '타입',
+      'Project',
+      '모델명',
+      '품명',
+      '차수',
+      '자산 번호',
+      'CVT',
+      '양산처',
+      '현위치',
+      '입고일',
+    ]);
+    worksheet.getRow(3).font = { bold: true };
+    worksheet.getRow(3).eachCell((cell) => {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: '90c3a0' }, // Green color
+      };
+    });
+
+    worksheet.getColumn(1).width = 15;
+    worksheet.getColumn(2).width = 15;
+    worksheet.getColumn(3).width = 20;
+    worksheet.getColumn(4).width = 15;
+    worksheet.getColumn(5).width = 15;
+    worksheet.getColumn(6).width = 15;
+    worksheet.getColumn(7).width = 15;
+    worksheet.getColumn(8).width = 15;
+    worksheet.getColumn(9).width = 15;
+    worksheet.getColumn(10).width = 15;
+
+    for (let index = 0; index < dataBefore?.data.length; index++) {
+      const item = dataBefore?.data[index];
+      const arrItem = [];
+      arrItem.push(item?.type || '');
+      arrItem.push(item?.project || '');
+      arrItem.push(item?.model || '');
+      arrItem.push(item?.productName || '');
+      arrItem.push(item?.level || '');
+      arrItem.push(item?.asset || '');
+      arrItem.push(item?.cvt || '');
+      arrItem.push(item?.massProduct || '');
+      arrItem.push(item?.currentLocation || '');
+      arrItem.push(item?.date || '');
+      await worksheet.addRow(arrItem);
+    }
+
+    //sheet 2 ==========================
+    await worksheetTwo.addRow({});
+    await worksheetTwo.addRow({});
+    await worksheetTwo.addRow(['No', '수정처', '일정', '수리 내용', '구분']);
+    worksheetTwo.getRow(3).font = { bold: true };
+    worksheetTwo.getRow(3).eachCell((cell) => {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: '90c3a0' }, // Green color
+      };
+    });
+
+    worksheetTwo.getColumn(1).width = 10;
+    worksheetTwo.getColumn(2).width = 15;
+    worksheetTwo.getColumn(3).width = 15;
+    worksheetTwo.getColumn(4).width = 20;
+    worksheetTwo.getColumn(5).width = 15;
+
+    for (let index = 0; index < dataAfter?.data.length; index++) {
+      const item = dataAfter?.data[index];
+      const arrItem = [];
+      arrItem.push(`${item?.no}` || '');
+      arrItem.push(item?.modification || '');
+      arrItem.push(item?.schedule || '');
+      arrItem.push(item?.detailEdit || '');
+      arrItem.push(item?.division || '');
+      await worksheetTwo.addRow(arrItem);
+    }
+    // // Căn giữa và thêm border cho các ô có dữ liệu
+    worksheet.eachRow((row) => {
+      row.eachCell({ includeEmpty: true }, (cell) => {
+        cell.alignment = {
+          vertical: 'middle',
+          horizontal: 'center',
+          wrapText: true,
+        };
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' },
+        };
+      });
+    });
+    //sheet 2 ==========================
+    // // Căn giữa và thêm border cho các ô có dữ liệu
+    worksheetTwo.eachRow((row) => {
+      row.eachCell({ includeEmpty: true }, (cell) => {
+        cell.alignment = {
+          vertical: 'middle',
+          horizontal: 'center',
+          wrapText: true,
+        };
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' },
+        };
+      });
+    });
+    const buffer = await workbook.xlsx.writeBuffer();
+    res.status(HttpStatus.OK);
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename=' + 'Report.xlsx',
+    );
+    res.end(buffer);
+  }
+
+  async importExcelFile(res: any, request: any, filePath: string) {
+    const dataCompany = await this.companyService.getAllCodeAndID();
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(filePath);
+    if (existsSync(filePath)) {
+     unlinkSync(filePath); // Delete file after processing
+    }
+    const worksheet = workbook.getWorksheet(1); // Read the first worksheet
+
+    const entities = {};
+
+    const startCol: number = 3;
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return; // Skip header row
+      const data = {
+        modelID: isObjectCellExcel(row.getCell(startCol + 0).value),
+        moldNo: isObjectCellExcel(row.getCell(startCol + 1).value),
+        manufacturer: isObjectCellExcel(row.getCell(startCol + 2).value),
+        shipArea: isObjectCellExcel(row.getCell(startCol + 3).value),
+        shipDate: isObjectCellExcel(row.getCell(startCol + 4).value),
+        massCompany: isObjectCellExcel(row.getCell(startCol + 5).value),
+        developDate: isObjectCellExcel(row.getCell(startCol + 6).value),
+        shipMassCompany: isObjectCellExcel(row.getCell(startCol + 7).value),
+        modificationCompany: isObjectCellExcel(row.getCell(startCol + 8).value),
+        outputEdit: isObjectCellExcel(row.getCell(startCol + 9).value),
+        wearingPlan: isObjectCellExcel(row.getCell(startCol + 10).value),
+        receivingCompleted: isObjectCellExcel(row.getCell(startCol + 11).value),
+        tryNo: isObjectCellExcel(row.getCell(startCol + 12).value),
+        historyEdit: isObjectCellExcel(row.getCell(startCol + 13).value),
+      };
+      const newModifiCompany = getCompanyIDByCode(
+        data?.modificationCompany,
+        dataCompany,
+      );
+      const numMoldNo = getNumMoldNo(data.moldNo, false);
+      entities[`${numMoldNo}${data?.modelID}`] = {
+        ...data,
+        manufacturer: getCompanyIDByCode(
+          data?.manufacturer,
+          dataCompany,
+        ) as Company,
+        shipArea: getCompanyIDByCode(data?.shipArea, dataCompany) as Company,
+        massCompany: getCompanyIDByCode(
+          data?.massCompany,
+          dataCompany,
+        ) as Company,
+        moldNo: numMoldNo,
+        model: {
+          modelID: parseInt(data?.modelID),
+        } as ModelMold,
+        shipDate: data?.shipDate ? new Date(data?.shipDate) : null,
+        shipMassCompany: data?.shipMassCompany
+          ? new Date(data?.shipMassCompany)
+          : null,
+        developDate: data?.developDate ? new Date(data?.developDate) : null,
+        modificationCompany: newModifiCompany as Company,
+        productionStatus: 'DEV',
+        createAt: new Date(),
+        createBy: request?.user?.userName,
+        historyTryNo: makeDateImportExcelOutputJig(
+          { ...data, modificationCompany: newModifiCompany },
+          entities[`${numMoldNo}${data?.modelID}`],
+          request,
+        ) as HistoryTryNo[],
+        histories: [
+          {
+            historyType: 'IMPORT',
+            historyTime: new Date(),
+            historyUsername: request?.user?.userName,
+            historyRemark: 'Create new',
+          },
+        ] as HistoryOutJig[],
+      };
+    });
+
+    // console.log('data',entities);
+
+    const dataOutputSave = Object.values(entities).map((item) => {
+      return item;
+    });
+
+    await this.repository.save(dataOutputSave);
+    return res.status(HttpStatus.OK).send({ message: 'Successful!' });
+  }
+
+  async getSampleFile(res: any) {
+    const filePath = join(process.env.UPLOAD_FOLDER || './public', 'ExcelFiles','Sample_Import_Mold.xlsx'); // Path to your file
+    const fileBuffer = readFileSync(filePath);
+    res.status(HttpStatus.OK);
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename=' + 'Sample_Import_Mold.xlsx',
+    );
+    res.end(fileBuffer);
+  }
+  async insertMultiple(arrData: OutputJig[]) {
+    const saved = await this.repository.save(arrData);
+    return saved;
+  }
+
+  @Cron('5 0 * * *')
+  // @Cron('*/5 * * * * *') // This runs every 2 seconds
+  async handleCronDeleteOuputJig() {
+    //6 tháng xóa 1 lần
+    const numMonthDelete = process.env.MONTH_DELETE
+      ? parseInt(process.env.MONTH_DELETE)
+      : 6;
+
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - numMonthDelete);
+    console.log('Start Cron job(OutputJig) chạy lúc 00h05 hằng ngày');
+    const dataFind = await this.repository.find({
+      relations: ['model'],
+      where: { deleteAt: LessThanOrEqual(sixMonthsAgo) },
+    });
+
+    if (dataFind?.length > 0) {
+      dataFind.map(async (item) => {
+        const outputJigID = item?.outputJigID;
+        const promiss = this.historyTrynoService.delete(outputJigID);
+        const promiss2 = this.historyService.delete(outputJigID);
+        await Promise.all([promiss, promiss2]);
+        await this.repository.delete({ outputJigID });
+        console.log('Deleted:', {
+          id: outputJigID,
+          model: item?.model?.model,
+          moldNo: item?.moldNo,
+        });
+      });
+    }
+    console.log('End Cron job(OutputJig) chạy lúc 00h05 hằng ngày');
   }
 }

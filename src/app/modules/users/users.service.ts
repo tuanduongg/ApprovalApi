@@ -27,7 +27,7 @@ export class UsersService {
     return true;
   }
   async create(body, request, res) {
-    const { fullName, userName, role, password, isRoot, isKorean } = body;
+    const { fullName, userName, role, password, isRoot, isKorean,department } = body;
     const userFind = await this.repository.findOne({
       where: { userName: ILike(userName) },
     });
@@ -41,6 +41,7 @@ export class UsersService {
       user.fullName = fullName;
       user.userName = userName;
       user.password = hashPass;
+      user.department = department;
       user.isRoot = isRoot ?? false;
       user.isKorean = isKorean ?? false;
       user.role = new Role().roleId = role;
@@ -50,7 +51,7 @@ export class UsersService {
     }
   }
   async update(body, request, res) {
-    const { fullName, role, isRoot, userId, isKorean } = body;
+    const { fullName, role, isRoot, userId, isKorean ,department} = body;
     if (!userId) {
       return res
         .status(HttpStatus.BAD_REQUEST)
@@ -64,6 +65,7 @@ export class UsersService {
       userFind.password = hashPass;
     }
     userFind.fullName = fullName;
+    userFind.department = department;
     userFind.isRoot = isRoot ?? false;
     userFind.isKorean = isKorean ?? false;
     if (role) {
@@ -79,6 +81,7 @@ export class UsersService {
       },
       select: {
         fullName: true,
+        department: true,
         userId: true,
         userName: true,
         role: {
@@ -103,6 +106,7 @@ export class UsersService {
         fullName: true,
         userId: true,
         userName: true,
+        department: true,
         role: {
           roleName: true,
         },

@@ -8,41 +8,38 @@ export class CompanyService {
   constructor(
     @InjectRepository(Company)
     private repository: Repository<Company>,
-  ) { }
+  ) {}
 
   async all(body, request, res) {
-    const {
-      page,
-      rowsPerPage,
-      search
-    } = body;
+    const { page, rowsPerPage, search } = body;
     const take = +rowsPerPage || 10;
     const newPage = +page || 0;
     const skip = newPage * take;
     const [data, total] = await this.repository.findAndCount({
       where: [
         {
-          companyCode: Like(`%${search}%`)
+          companyCode: Like(`%${search}%`),
         },
         {
-          companyName: Like(`%${search}%`)
-        }
+          companyName: Like(`%${search}%`),
+        },
       ],
       take: take,
       skip: skip,
-      order: { createAt: 'DESC' }
+      order: { createAt: 'DESC' },
     });
     return res.status(HttpStatus.OK).send({ data, total });
   }
 
   async add(body, request, res) {
-    const {
-      codeCompany,
-      nameCompany,
-    } = body;
-    const checkCode = await this.repository.findOne({ where: { companyCode: codeCompany } });
+    const { codeCompany, nameCompany } = body;
+    const checkCode = await this.repository.findOne({
+      where: { companyCode: codeCompany },
+    });
     if (checkCode) {
-      return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Code existing!' });
+      return res
+        .status(HttpStatus.BAD_REQUEST)
+        .send({ message: 'Code existing!' });
     }
     const newModel = new Company();
     newModel.companyCode = codeCompany?.trim();
@@ -53,18 +50,21 @@ export class CompanyService {
     return res.status(HttpStatus.OK).send(newModel);
   }
   async update(body, request, res) {
-    const {
-      companyID,
-      codeCompany,
-      nameCompany,
-    } = body;
-    const checkCode = await this.repository.findOne({ where: { companyCode: codeCompany } });
+    const { companyID, codeCompany, nameCompany } = body;
+    const checkCode = await this.repository.findOne({
+      where: { companyCode: codeCompany },
+    });
     if (checkCode && checkCode?.companyID !== companyID) {
-      return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Code existing!' });
+      return res
+        .status(HttpStatus.BAD_REQUEST)
+        .send({ message: 'Code existing!' });
     }
     const newModel = await this.repository.findOne({ where: { companyID } });
     if (newModel) {
-      if (codeCompany?.trim()?.toLocaleLowerCase() !== newModel.companyCode.toLocaleLowerCase()) {
+      if (
+        codeCompany?.trim()?.toLocaleLowerCase() !==
+        newModel.companyCode.toLocaleLowerCase()
+      ) {
         newModel.companyCode = codeCompany?.trim();
       }
       newModel.companyName = nameCompany?.trim();
@@ -73,9 +73,20 @@ export class CompanyService {
       await this.repository.save(newModel);
       return res.status(HttpStatus.OK).send(newModel);
     }
-    return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Not found record!' });
+    return res
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ message: 'Not found record!' });
   }
 
+  async getAllCodeAndID() {
+    const data = await this.repository.find({
+      select: {
+        companyID: true,
+        companyCode: true,
+      },
+    });
+    return data;
+  }
 
   async findByCode(code: Array<string>) {
     if (code?.length > 0) {

@@ -1,4 +1,9 @@
-import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common';
+import {
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  RequestMethod,
+} from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
@@ -37,7 +42,12 @@ import { HistoryTryNoModule } from './modules/history_tryno/history_tryno.module
 import { NotificationModule } from './modules/notification/notification.module';
 import { Notification } from 'src/database/entity/notification.entity';
 import { LogIPMiddleware } from 'src/core/middlewares/LogIP.middleware';
+import { DetailMoldBeforeModule } from './modules/detail_mold_before/detail_mold_before.module';
+import { DetailMoldAfterModule } from './modules/detail_mold_after/detail_mold_after.module';
+import { DetailMoldAfter } from 'src/database/entity/detail_mold_after.entity';
+import { DetailMoldBefore } from 'src/database/entity/detail_mold_before.entity';
 // import { InOutJIGModule } from './modules/intout_jig/inout_jig.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -76,7 +86,9 @@ import { LogIPMiddleware } from 'src/core/middlewares/LogIP.middleware';
             OutputJig,
             HistoryOutJig,
             HistoryTryNo,
-            Notification
+            Notification,
+            DetailMoldAfter,
+            DetailMoldBefore,
           ],
           requestTimeout: 30000, //for mssql
           synchronize: true,
@@ -94,6 +106,7 @@ import { LogIPMiddleware } from 'src/core/middlewares/LogIP.middleware';
         return connectionOptions;
       },
     } as TypeOrmModuleAsyncOptions),
+    ScheduleModule.forRoot(),
     AuthModule,
     UsersModule,
     CategoryConceptModule,
@@ -107,19 +120,18 @@ import { LogIPMiddleware } from 'src/core/middlewares/LogIP.middleware';
     OutputJigModule,
     HistoryOutJigModule,
     HistoryTryNoModule,
-    NotificationModule
-
+    NotificationModule,
+    DetailMoldBeforeModule,
+    DetailMoldAfterModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(LogIPMiddleware)
-      .forRoutes(
-        { path: 'auth/login', method: RequestMethod.POST }, // Áp dụng cho route GET /login
-      );
-      // .forRoutes('*'); // Áp dụng middleware cho tất cả các route
+    consumer.apply(LogIPMiddleware).forRoutes(
+      { path: 'auth/login', method: RequestMethod.POST }, // Áp dụng cho route GET /login
+    );
+    // .forRoutes('*'); // Áp dụng middleware cho tất cả các route
   }
 }

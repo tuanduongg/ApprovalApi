@@ -1,17 +1,17 @@
 import { Body, Controller, Post, Req, Res, UseGuards } from '@nestjs/common';
-import {  ModelMoldService } from './model_mold.service';
 import { AuthGuard } from '../auth/auth.guard';
+// import { IsVNGuard } from 'src/core/guards/isVN.guard';
+import { DetailMoldBeforeService } from './detail_mold_before.service';
 
-@Controller('model-mold')
-export class ModelMoldController {
-  constructor(private service: ModelMoldService) { }
+@Controller('detail-mold-before')
+export class DetailMoldBeforeController {
+  constructor(private service: DetailMoldBeforeService) {}
 
   @UseGuards(AuthGuard)
   @Post('/all')
   async all(@Res() res: Response, @Req() request: Request, @Body() body) {
     return await this.service.all(body, request, res);
   }
-
 
   @UseGuards(AuthGuard)
   @Post('/add')
@@ -20,21 +20,14 @@ export class ModelMoldController {
   }
 
   @UseGuards(AuthGuard)
-  @Post('/findByCategory')
-  async findByCategory(@Res() res: Response, @Req() request: Request, @Body() body) {
-    return await this.service.findByCategory(body, request, res);
-  }
-
-  @UseGuards(AuthGuard)
-  @Post('/exportExcel')
-  async exportExcel(@Res() res: Response, @Req() request: Request, @Body() body) {
-    return await this.service.exportExcel(body, request, res);
-  }
-
-
-  @UseGuards(AuthGuard)
   @Post('/update')
   async update(@Res() res: Response, @Req() request: Request, @Body() body) {
     return await this.service.update(body, request, res);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('/delete')
+  async delete(@Res() res: Response, @Req() request: Request, @Body() body) {
+    return await this.service.delete(body, request, res);
   }
 }

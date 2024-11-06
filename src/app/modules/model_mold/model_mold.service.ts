@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { CategoryConcept } from 'src/database/entity/category_concept.entity';
 import { ModelMold } from 'src/database/entity/model_mold.entity';
 import { In, Like, Repository } from 'typeorm';
+const ExcelJS = require('exceljs');
 
 @Injectable()
 export class ModelMoldService {
@@ -58,6 +59,66 @@ export class ModelMoldService {
       .status(HttpStatus.BAD_REQUEST)
       .send({ message: 'Not found record!' });
   }
+
+  async exportExcel(body, request, res) {
+    const data = await this.repository.find({ relations: ['category'] });
+    const workbook = new ExcelJS.Workbook();
+    workbook.modified = new Date();
+    const worksheet = workbook.addWorksheet('Sheet1');
+    worksheet.addRow({});
+    worksheet.addRow({});
+    worksheet.addRow([
+      '#',
+      'Category',
+      'Project Name',
+      '구분',
+      'Model',
+      'Description',
+      'ModelID',
+    ]);
+    worksheet.getRow(3).font = { bold: true };
+    worksheet.getRow(3).eachCell((cell) => {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: '90c3a0' }, // Green color
+      };
+    });
+    worksheet.getColumn(1).width = 5;
+    worksheet.getColumn(3).width = 15;
+    worksheet.getColumn(5).width = 15;
+    worksheet.getColumn(6).width = 25;
+    worksheet.properties.defaultRowHeight = 15;
+    data.map((item, index) => {
+      const dataAdd = [];
+      dataAdd.push(index+1,item?.category.categoryName,item?.projectName,item?.type,item?.model,item?.description,item?.modelID);
+      worksheet.addRow(dataAdd);
+    });
+
+    // // Căn giữa và thêm border cho các ô có dữ liệu
+    worksheet.eachRow((row, rowNumber) => {
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        cell.alignment = {
+          vertical: 'middle',
+          horizontal: 'center',
+          wrapText: true,
+        };
+      });
+    });
+    const buffer = await workbook.xlsx.writeBuffer();
+    res.status(HttpStatus.OK);
+
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename=' + 'ReportABC.xlsx',
+    );
+    res.end(buffer);
+  }
+
   async add(body, request, res) {
     const { project, type, model, category, description } = body;
     const newModel = new ModelMold();

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CategoryConcept } from 'src/database/entity/category_concept.entity';
-import { Between, Repository } from 'typeorm';
+import { Between, IsNull, Repository } from 'typeorm';
 
 @Injectable()
 export class CategoryConceptService {
@@ -24,7 +24,7 @@ export class CategoryConceptService {
           reportId: true,
           dateReply: true,
           dateRequest: true,
-          time:true,
+          time: true,
           processQC: {
             processId: true,
             processName: true,
@@ -35,6 +35,7 @@ export class CategoryConceptService {
         {
           reportQC: {
             time: Between(startDate, endDate),
+            deleteAt: IsNull(),
           },
         },
         {
@@ -43,13 +44,13 @@ export class CategoryConceptService {
       ],
       relations: ['reportQC', 'reportQC.processQC'],
     });
-    const result = arrCate.map((cate)=>{
-        const find = data.find((item)=>item?.categoryId === cate?.categoryId);
-        if(!find) {
-            return {...cate,reportQC:[]}         
-        }
-        return find;
-    })
+    const result = arrCate.map((cate) => {
+      const find = data.find((item) => item?.categoryId === cate?.categoryId);
+      if (!find) {
+        return { ...cate, reportQC: [] };
+      }
+      return find;
+    });
     return res.status(200).send(result);
   }
 }

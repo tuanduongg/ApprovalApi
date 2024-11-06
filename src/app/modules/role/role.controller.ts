@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Req, Res, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { RoleService } from './role.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { RootGuard } from '../auth/root.guard';
@@ -14,4 +22,10 @@ export class RoleController {
     return await this.service.all();
   }
 
+  @UseGuards(RootGuard)
+  @UseGuards(AuthGuard)
+  @Post('/update')
+  async update(@Res() res: Response, @Body() body) {
+    return await this.service.update(res, body);
+  }
 }

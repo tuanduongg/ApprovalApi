@@ -3,7 +3,15 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { CategoryConcept } from 'src/database/entity/category_concept.entity';
 import { ProcessQC } from 'src/database/entity/process_qc.entity';
 import { ReportQC } from 'src/database/entity/report_qc.entity';
-import { Between, FindManyOptions, In, Like, Repository } from 'typeorm';
+import {
+  Between,
+  FindManyOptions,
+  In,
+  IsNull,
+  LessThanOrEqual,
+  Like,
+  Repository,
+} from 'typeorm';
 import { FileReportQCService } from '../file_reportQC/file_reportQC.service';
 import { FileReportQC } from 'src/database/entity/file_reportQC.entity';
 import { ProcessQCService } from '../process_qc/process_qc.service';
@@ -15,6 +23,7 @@ import {
 const ExcelJS = require('exceljs');
 import * as fs from 'fs';
 import { join } from 'path';
+import { Cron } from '@nestjs/schedule';
 
 @Injectable()
 export class ReportQCService {
@@ -194,8 +203,6 @@ export class ReportQCService {
       }
       return res.status(HttpStatus.OK).send(newReport);
     } catch (error) {
-      console.log('err 190', error);
-
       this.fileReportQCService.deleteUploadedFiles(listFileAdd);
       return res
         .status(HttpStatus.BAD_REQUEST)
@@ -224,6 +231,27 @@ export class ReportQCService {
       .status(HttpStatus.BAD_REQUEST)
       .send({ message: 'Cannot found ID!' });
   }
+  async softDelete(res, request, body) {
+    const reportId = body?.reportId;
+    if (reportId) {
+      const dataFind = await this.repository.findOne({
+        where: { reportId: reportId },
+      });
+      try {
+        dataFind.deleteAt = new Date();
+        dataFind.deleteBy = request?.user?.userName;
+        await this.repository.save(dataFind);
+        return res
+          .status(HttpStatus.OK)
+          .send({ message: 'Delete successful!' });
+      } catch (error) {
+        console.log('err', error);
+      }
+    }
+    return res
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ message: 'Cannot found ID!' });
+  }
 
   private async getAll(
     {
@@ -241,18 +269,22 @@ export class ReportQCService {
       {
         code: Like(`%${search}%`),
         time: Between(startDate, endDate),
+        deleteAt: IsNull(),
       },
       {
         model: Like(`%${search}%`),
         time: Between(startDate, endDate),
+        deleteAt: IsNull(),
       },
       {
         plName: Like(`%${search}%`),
         time: Between(startDate, endDate),
+        deleteAt: IsNull(),
       },
       {
         item: Like(`%${search}%`),
         time: Between(startDate, endDate),
+        deleteAt: IsNull(),
       },
     ];
 
@@ -446,6 +478,15 @@ export class ReportQCService {
       });
     });
 
+    const rowCount = data?.length; // Tùy chỉnh theo số lượng hàng bạn có
+
+    // Bắt đầu từ dòng 2 và cứ mỗi 3 dòng sẽ tạo một nhóm
+    for (let i = 2; i <= rowCount * 3; i += 3) {
+      const startRow = i;
+      const endRow = i + 2;
+      worksheet.mergeCells(`A${startRow}:A${endRow}`);
+    }
+
     const buffer = await workbook.xlsx.writeBuffer();
     res.status(HttpStatus.OK);
 
@@ -473,7 +514,7 @@ export class ReportQCService {
       },
       true,
     );
-    
+
     // const arrHeader = result[0]?.processArr.map((head) => ({
     //   header: head?.processName,
     //   key: head?.processId,
@@ -580,5 +621,31 @@ export class ReportQCService {
       'attachment; filename=' + 'ReportABC.xlsx',
     );
     res.end(buffer);
+  }
+
+  @Cron('5 0 * * *')
+  async handleCronDeleteReportQC() {
+    //6 tháng xóa 1 lần
+    const numMonthDelete = process.env.MONTH_DELETE
+      ? parseInt(process.env.MONTH_DELETE)
+      : 6;
+
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - numMonthDelete);
+    console.log('Start Cron job(QPN) chạy lúc 00h05 hằng ngày');
+    const dataFind = await this.repository.find({
+      where: { deleteAt: LessThanOrEqual(sixMonthsAgo) },
+      relations: ['media'],
+    });
+    
+    if (dataFind?.length > 0) {
+      dataFind.map(async (item) => {
+        const oldID = item?.reportId;
+        await this.fileReportQCService.deleteMultipleFile(item.media);
+        await this.repository.remove(item);
+        console.log('Deleted:', { id: oldID, code: item?.code });
+      });
+    }
+    console.log('End Cron job(QPN) chạy lúc 00h05 hằng ngày');
   }
 }

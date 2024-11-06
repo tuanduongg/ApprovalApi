@@ -152,7 +152,7 @@ export class ReportQCController {
   @UseGuards(AuthGuard)
   @Post('/delete')
   async delete(@Res() res: Response, @Req() request: Request, @Body() body) {
-    return await this.service.delete(res, request, body);
+    return await this.service.softDelete(res, request, body);
   }
 
   @UseGuards(IsVNGuard)

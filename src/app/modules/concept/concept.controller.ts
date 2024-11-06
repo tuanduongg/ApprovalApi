@@ -75,8 +75,6 @@ export class ConceptController {
     @UploadedFiles() files: Express.Multer.File[],
   ) {
     const arrFile = await handleFiles(files);
-    // const ip = request.headers['x-forwarded-for'] || request..remoteAddress;
-    // console.log('IP của request:', ip);
     return await this.service.update(res, request, body, arrFile);
   }
 
@@ -142,6 +140,8 @@ export class ConceptController {
   @UseGuards(AuthGuard)
   @Post('/delete')
   async delete(@Res() res: Response, @Req() request: Request, @Body() body) {
-    return await this.service.delete(res, request, body);
+    return await this.service.softDelete(res, request, body);
   }
+
+  
 }
