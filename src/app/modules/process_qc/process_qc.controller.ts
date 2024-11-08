@@ -1,6 +1,7 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
 import { ProcessQCService } from './process_qc.service';
+import { RBACGuard } from 'src/core/guards/RBAC.guard';
 
 @Controller('process')
 export class ProcessQCController {
@@ -9,6 +10,7 @@ export class ProcessQCController {
     ) {
     }
     
+    @UseGuards(RBACGuard)
     @UseGuards(AuthGuard)
     @Get('/all')
     async all() {

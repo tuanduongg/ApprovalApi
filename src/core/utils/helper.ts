@@ -5,7 +5,6 @@ import * as path from 'path';
 import * as fs from 'fs';
 import dayjs from 'dayjs';
 import { Between } from 'typeorm';
-import * as Jimp from 'jimp';
 import { Company } from 'src/database/entity/company.entity';
 
 const SALTROUNDS = 10;
@@ -476,7 +475,7 @@ export const LIST_COL_MOLD_REPORT_ID = [
 export function getDepartmentEditMold(num: number) {
   let text = '';
   switch (
-    num //phat trien
+  num //phat trien
   ) {
     case 1:
       text = '개발수정';
@@ -692,3 +691,12 @@ export const isObjectCellExcel = (value: any) => {
   }
   return value;
 };
+
+export const clearPrefixApi = (url: string) => {
+  const prefix = '/api';
+  if (url?.includes(prefix)) {
+    return url.replaceAll(prefix, '');
+
+  }
+  return url;
+}

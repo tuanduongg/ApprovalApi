@@ -1,12 +1,13 @@
 import { Body, Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { FileReportQCService } from './file_reportQC.service';
 import { AuthGuard } from '../auth/auth.guard';
-import { RootGuard } from '../auth/root.guard';
+import { RBACGuard } from 'src/core/guards/RBAC.guard';
 
 @Controller('file-report-qc')
 export class FileReportQCController {
   constructor(private service: FileReportQCService) { }
 
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/findByReportId')
   async findByReportId(
@@ -16,6 +17,8 @@ export class FileReportQCController {
   ) {
     return await this.service.findByReport(res, request, body);
   }
+
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/download')
   async download(
@@ -26,7 +29,7 @@ export class FileReportQCController {
     return await this.service.download(res, request, body);
   }
 
-  // @UseGuards(RootGuard)
+  
   @UseGuards(AuthGuard)
   @Get('/check-file')
   async checkFileExistFolder(@Res() res: Response, @Req() request: Request) {

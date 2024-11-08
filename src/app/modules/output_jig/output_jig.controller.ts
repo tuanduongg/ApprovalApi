@@ -14,29 +14,34 @@ import { AuthGuard } from '../auth/auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import * as path from 'path';
+import { RBACGuard } from 'src/core/guards/RBAC.guard';
 
 @Controller('output-jig')
 export class OutputJigController {
-  constructor(private service: OutputJigService) {}
+  constructor(private service: OutputJigService) { }
 
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/all')
   async all(@Res() res: Response, @Req() request: Request, @Body() body) {
     return await this.service.all(body, request, res);
   }
 
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/add')
   async add(@Res() res: Response, @Req() request: Request, @Body() body) {
     return await this.service.add(body, request, res);
   }
 
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/update')
   async update(@Res() res: Response, @Req() request: Request, @Body() body) {
     return await this.service.update(body, request, res);
   }
 
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/change-status')
   async changeStatus(
@@ -47,18 +52,21 @@ export class OutputJigController {
     return await this.service.changeStatus(body, request, res);
   }
 
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/delete')
   async delete(@Res() res: Response, @Req() request: Request, @Body() body) {
     return await this.service.softDelete(body, request, res);
   }
 
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/history')
   async history(@Res() res: Response, @Req() request: Request, @Body() body) {
     return await this.service.history(res, request, body);
   }
 
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/export-history')
   async exportHistory(
@@ -69,6 +77,7 @@ export class OutputJigController {
     return await this.service.exportHistory(res, request, body);
   }
 
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/export-excel')
   async exportExcelReport(
@@ -79,6 +88,7 @@ export class OutputJigController {
     return await this.service.exportExcel(res, request, body);
   }
 
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/export-excel-id')
   async exportExcelByID(
@@ -90,6 +100,7 @@ export class OutputJigController {
   }
 
 
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/importExcelFile')
   @UseInterceptors(
@@ -113,9 +124,10 @@ export class OutputJigController {
     @Req() request: Request,
     @UploadedFile() file: Express.Multer.File
   ) {
-    return await this.service.importExcelFile(res,request,file?.path);
+    return await this.service.importExcelFile(res, request, file?.path);
   }
 
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/exportExcelDetailList')
   async exportExcelDetailList(
@@ -126,6 +138,7 @@ export class OutputJigController {
     return await this.service.exportExcelDetailList(res, request, body);
   }
 
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Get('/sampleFile')
   async getSampleFile(

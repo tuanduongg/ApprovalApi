@@ -8,23 +8,32 @@ export class RoleService {
   constructor(
     @InjectRepository(Role)
     private repository: Repository<Role>,
-  ) {}
+  ) { }
 
   async all() {
-    return await this.repository.find();
+    return await this.repository.find({ relations: ['permisstions'] });
   }
   async update(res, body) {
     const data = body?.data;
     const dataObj = JSON.parse(data);
-    if (dataObj?.length > 0) {
-      const dataToSave = dataObj.filter((item) => {
-        return item?.roleName;
-      });
-      await this.repository.save(dataToSave);
+    try {
+      await this.repository.save(dataObj);
+
       return res?.status(HttpStatus.OK).send({ message: 'Successful!' });
+    } catch (error) {
+      return res
+        ?.status(HttpStatus.BAD_REQUEST)
+        .send({ message: 'Update fail!' });
+
     }
-    return res
-      ?.status(HttpStatus.BAD_REQUEST)
-      .send({ message: 'Update fail!' });
+    // if (dataObj?.length > 0) {
+    //   const dataToSave = dataObj.filter((item) => {
+    //     return item?.roleName;
+    //   });
+    //   return res?.status(HttpStatus.OK).send({ message: 'Successful!' });
+    // }
+    // return res
+    // ?.status(HttpStatus.BAD_REQUEST)
+    // .send({ message: 'Update fail!' });
   }
 }

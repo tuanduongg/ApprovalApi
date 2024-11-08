@@ -48,6 +48,10 @@ import { DetailMoldAfter } from 'src/database/entity/detail_mold_after.entity';
 import { DetailMoldBefore } from 'src/database/entity/detail_mold_before.entity';
 // import { InOutJIGModule } from './modules/intout_jig/inout_jig.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { Permission } from 'src/database/entity/permisstion.entity';
+import { ListAPI } from 'src/database/entity/list_api.entity';
+import { ListAPIModule } from './modules/list_api/list_api.module';
+import { PermissionModule } from './modules/permission/permission.module';
 
 @Module({
   imports: [
@@ -89,6 +93,8 @@ import { ScheduleModule } from '@nestjs/schedule';
             Notification,
             DetailMoldAfter,
             DetailMoldBefore,
+            Permission,
+            ListAPI
           ],
           requestTimeout: 30000, //for mssql
           synchronize: true,
@@ -123,6 +129,8 @@ import { ScheduleModule } from '@nestjs/schedule';
     NotificationModule,
     DetailMoldBeforeModule,
     DetailMoldAfterModule,
+    PermissionModule,
+    ListAPIModule
   ],
   controllers: [AppController],
   providers: [AppService],

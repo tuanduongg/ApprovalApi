@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Get,
   Post,
   Req,
   Res,
@@ -15,14 +14,14 @@ import { multerOptionConcept } from 'src/core/utils/multer.config';
 import { handleFiles } from 'src/core/utils/helper';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { StorageGuard } from 'src/core/guards/storage.guard';
-import { IsVNGuard } from 'src/core/guards/isVN.guard';
+import { RBACGuard } from 'src/core/guards/RBAC.guard';
 
 @Controller('report-qc')
 export class ReportQCController {
   constructor(private service: ReportQCService) { }
 
-  @UseGuards(IsVNGuard)
   @UseGuards(StorageGuard)
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/add')
   @UseInterceptors(
@@ -85,8 +84,9 @@ export class ReportQCController {
     );
   }
 
-  @UseGuards(IsVNGuard)
+
   @UseGuards(StorageGuard)
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/update')
   @UseInterceptors(
@@ -148,28 +148,25 @@ export class ReportQCController {
     );
   }
 
-  @UseGuards(IsVNGuard)
+
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/delete')
   async delete(@Res() res: Response, @Req() request: Request, @Body() body) {
     return await this.service.softDelete(res, request, body);
   }
 
-  @UseGuards(IsVNGuard)
+
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/all')
   async all(@Res() res: Response, @Req() request: Request, @Body() body) {
     return await this.service.all(res, request, body);
   }
 
-  // @UseGuards(AuthGuard)
-  // @Post('/statistic')
-  // async statistic(@Res() res: Response, @Req() request: Request, @Body() body) {
-  //   return await this.service.statistic(res, request, body);
-  // }
-  // @UseGuards(AuthGuard)
 
-  @UseGuards(IsVNGuard)
+
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/exportExcel-statistic')
   async exportExcelStatistic(
@@ -180,7 +177,8 @@ export class ReportQCController {
     return await this.service.exportExcelStatistic(res, request, body);
   }
 
-  @UseGuards(IsVNGuard)
+
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/exportExcel-report')
   async exportExcelReport(

@@ -42,22 +42,22 @@ export class ConceptService {
 
     const whereArrTemp: any = [
       {
-        regisDate: Between(startDate, endDate),
+        // regisDate: Between(startDate, endDate),
         code: Like(`%${search?.trim()}%`),
         deleteAt: IsNull(),
       },
       {
-        regisDate: Between(startDate, endDate),
+        // regisDate: Between(startDate, endDate),
         plName: Like(`%${search?.trim()}%`),
         deleteAt: IsNull(),
       },
       {
-        regisDate: Between(startDate, endDate),
+        // regisDate: Between(startDate, endDate),
         modelName: Like(`%${search?.trim()}%`),
         deleteAt: IsNull(),
       },
       {
-        regisDate: Between(startDate, endDate),
+        // regisDate: Between(startDate, endDate),
         productName: Like(`%${search?.trim()}%`),
         deleteAt: IsNull(),
       },
@@ -67,7 +67,9 @@ export class ConceptService {
       if (personName?.length > 0) {
         item.user = { userId: In(personName) };
       }
-
+      if(startDate && endDate) {
+        item.regisDate = Between(startDate, endDate);
+      }
       if (categoryFilter?.length > 0) {
         item.category = { categoryId: In(categoryFilter) };
       }

@@ -1,20 +1,25 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { comparePasswords, dirSize, getAllFilesInFolder, hashPassword } from 'src/core/utils/helper';
 import { Role } from 'src/database/entity/role.entity';
 import { User } from 'src/database/entity/user.entity';
-import { ILike, Like, Repository } from 'typeorm';
+import { ILike, In, Like, Repository } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
+import { PermissionService } from '../permission/permission.service';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private repository: Repository<User>,
+    @Inject(PermissionService) private readonly permissionService: PermissionService,
   ) { }
 
   async findOne(username: string): Promise<User> {
+    if (!username) {
+      return null;
+    }
     const user = await this.repository.findOne({
       where: {
         userName: username,
@@ -27,7 +32,7 @@ export class UsersService {
     return true;
   }
   async create(body, request, res) {
-    const { fullName, userName, role, password, isRoot, isKorean,department } = body;
+    const { fullName, userName, role, password, isRoot, isKorean, department } = body;
     const userFind = await this.repository.findOne({
       where: { userName: ILike(userName) },
     });
@@ -51,7 +56,7 @@ export class UsersService {
     }
   }
   async update(body, request, res) {
-    const { fullName, role, isRoot, userId, isKorean ,department} = body;
+    const { fullName, role, isRoot, userId, isKorean, department } = body;
     if (!userId) {
       return res
         .status(HttpStatus.BAD_REQUEST)
@@ -75,9 +80,10 @@ export class UsersService {
     return res.status(HttpStatus.OK).send(userFind);
   }
   async public() {
+    /// nhaan vien taoj approval và duyệt appraoval phải có roleID 1,3
     return await this.repository.find({
       where: {
-        role: { create: true },
+        role: { roleId: In([1, 3]) },
       },
       select: {
         fullName: true,
@@ -118,15 +124,16 @@ export class UsersService {
     return res?.status(200).send(data);
   }
   async checkRole(body, request, res) {
-    const user = await this.repository.findOne({
-      where: { userName: request?.user?.userName },
-      relations: ['role'],
-    });
-
-    if (user) {
-      return res.status(HttpStatus.OK).send(user?.role);
+    const screen = request.headers['screen'];
+    if (!screen) {
+      return res.status(HttpStatus.UNAUTHORIZED).send({ message: 'Not found screen!' });
     }
-    return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Not found!' });
+    const user = await this.findOne(request?.user?.userName);
+    const permission = await this.permissionService.findOneByRole(user?.role?.roleId, screen);
+    if (permission) {
+      return res.status(HttpStatus.OK).send(permission);
+    }
+    return res.status(HttpStatus.UNAUTHORIZED).send({ message: 'Not found!' });
   }
   async find(body, request, res) {
     if (!body?.userId) {
@@ -191,6 +198,15 @@ export class UsersService {
     return res.status(HttpStatus.OK).send({ size });
   }
 
+  async getRoleID(username: string) {
+    if (username) {
+      const userFind = await this.findOne(username);
+      if (userFind) {
+        return userFind.role.roleId;
+      }
+    }
+    return null;
+  }
 
-  
+
 }

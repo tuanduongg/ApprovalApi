@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
 import { CategoryConceptService } from './category_concept.service';
-import { IsVNGuard } from 'src/core/guards/isVN.guard';
+import { RBACGuard } from 'src/core/guards/RBAC.guard';
 
 @Controller('category-concept')
 export class CategoryConceptController {
@@ -21,7 +21,7 @@ export class CategoryConceptController {
     return await this.service.all();
   }
 
-  @UseGuards(IsVNGuard)
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/statisticReportQC')
   async statisticReportQC(
