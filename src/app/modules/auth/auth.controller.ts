@@ -1,8 +1,9 @@
-import { Body, Controller, HttpStatus, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, HttpStatus, Logger, Post, Req, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { AuthService } from './auth.service';
 @Controller('auth')
 export class AuthController {
+    private logger = new Logger();
     constructor(private readonly service: AuthService) {
 
     }
@@ -13,6 +14,8 @@ export class AuthController {
         const password = body?.password;
         const data = await this.service.signIn(username, password);
         if (data) {
+            const msg = `"${username}" login`;
+            this.logger.log(msg);
             return res.status(HttpStatus.OK).send({ message: 'Logged in successfully',data });
         } else if (data === null) { //username not found
             return res.status(HttpStatus.UNAUTHORIZED).send({ message: 'Username not found!' });

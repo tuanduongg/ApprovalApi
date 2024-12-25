@@ -298,7 +298,7 @@ export class ConceptService {
           },
         },
         relations: ['category'],
-        where: { code: Like(`%${code}%`) },
+        where: { code: Like(`%${code}%`),deleteAt: IsNull() },
       });
       if (data) {
         return res.status(HttpStatus.OK).send(data);
@@ -332,7 +332,7 @@ export class ConceptService {
 
     if (dataObj?.code) {
       const codeStr = `${dataObj?.code}`.trim();
-      const checkCode = await this.repository.findOneBy({ code: codeStr });
+      const checkCode = await this.repository.findOneBy({ code: codeStr,deleteAt:IsNull() });
       if (checkCode) {
         this.fileConceptService.deleteUploadedFiles(files);
         return res
@@ -442,7 +442,7 @@ export class ConceptService {
         .send({ message: 'Cannot found ID!' });
     }
     const codeStr = `${dataObj?.code}`.trim();
-    const checkCode = await this.repository.findOneBy({ code: codeStr });
+    const checkCode = await this.repository.findOneBy({ code: codeStr,deleteAt:IsNull() });
 
     const concept = await this.repository.findOne({
       where: { conceptId: dataObj?.conceptId },

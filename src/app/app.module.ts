@@ -94,7 +94,7 @@ import { PermissionModule } from './modules/permission/permission.module';
             DetailMoldAfter,
             DetailMoldBefore,
             Permission,
-            ListAPI
+            ListAPI,
           ],
           requestTimeout: 30000, //for mssql
           synchronize: true,
@@ -130,16 +130,17 @@ import { PermissionModule } from './modules/permission/permission.module';
     DetailMoldBeforeModule,
     DetailMoldAfterModule,
     PermissionModule,
-    ListAPIModule
+    ListAPIModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer.apply(LogIPMiddleware).forRoutes(
-      { path: 'auth/login', method: RequestMethod.POST }, // Áp dụng cho route GET /login
-    );
-    // .forRoutes('*'); // Áp dụng middleware cho tất cả các route
-  }
-}
+export class AppModule {}
+// export class AppModule implements NestModule {
+//   configure(consumer: MiddlewareConsumer) {
+//     consumer.apply(LogIPMiddleware).forRoutes(
+//       { path: 'auth/login', method: RequestMethod.POST }, // Áp dụng cho route GET /login
+//     );
+//     // .forRoutes('*'); // Áp dụng middleware cho tất cả các route
+//   }
+// }

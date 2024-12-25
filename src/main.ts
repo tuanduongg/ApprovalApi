@@ -28,7 +28,7 @@ async function bootstrap() {
 
   const PORT = configService.get('PORT') || 5005;
   await app.listen(PORT);
-  console.log('Version:V1.05.11.24');
+  console.log('Version:V1.25.11.24');
   console.log('ENV:', configService.get('NODE_ENV') ?? 'Not Found');
   console.log('App starting at port ' + PORT);
 }
