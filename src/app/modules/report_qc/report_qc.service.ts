@@ -426,6 +426,7 @@ export class ReportQCService {
       .concat([{ header: 'Total', key: 'TOTAL', width: 10 }]);
     // In đậm header
     worksheet.getRow(1).font = { bold: true };
+    
 
     data.map((row) => {
       const processArr = row?.processArr;
@@ -486,6 +487,7 @@ export class ReportQCService {
       const endRow = i + 2;
       worksheet.mergeCells(`A${startRow}:A${endRow}`);
     }
+    
 
     const buffer = await workbook.xlsx.writeBuffer();
     res.status(HttpStatus.OK);
@@ -532,6 +534,9 @@ export class ReportQCService {
         pattern: 'solid',
         fgColor: { argb: 'FFADD8E6' }, // Green color
       };
+    });
+    worksheet.columns.forEach((column) => {
+      column.numFmt = '@';
     });
     worksheet.properties.defaultRowHeight = 30;
     const arrImage = [];
