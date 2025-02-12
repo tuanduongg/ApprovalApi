@@ -426,7 +426,6 @@ export class ReportQCService {
       .concat([{ header: 'Total', key: 'TOTAL', width: 10 }]);
     // In đậm header
     worksheet.getRow(1).font = { bold: true };
-    
 
     data.map((row) => {
       const processArr = row?.processArr;
@@ -487,7 +486,6 @@ export class ReportQCService {
       const endRow = i + 2;
       worksheet.mergeCells(`A${startRow}:A${endRow}`);
     }
-    
 
     const buffer = await workbook.xlsx.writeBuffer();
     res.status(HttpStatus.OK);
@@ -561,43 +559,75 @@ export class ReportQCService {
         images: item.media.filter((row) => row.type === 'IMG'),
       });
     }
-    let maxColMerge = 0;
-    arrImage.map(async (item) => {
-      const index = item.index;
-      const lengthImages = item.images.length;
-      if (lengthImages > maxColMerge) {
-        maxColMerge = lengthImages;
-      }
-      item.images.map((img, i) => {
-        if (img.type === 'IMG') {
-          const colImageStart = worksheet.getColumn(
-            LIST_COL_REPORT_QC.length + i,
-          ).letter;
-          const filePath = join(
-            process.env.UPLOAD_FOLDER || './public',
-            img.fileUrl,
-          );
-          if (fs.existsSync(filePath)) {
-            const image = workbook.addImage({
-              buffer: fs.readFileSync(filePath),
-              extension: img.fileExtenstion,
-            });
+    const maxColMerge = 0;
+    // for (const item of arrImage) {
+    //   const index = item.index;
+    //   for (let i = 0; i < item.images.length; i++) {
+    //     const img = item.images[i];
+    //     const colImageStart = worksheet.getColumn(
+    //       LIST_COL_REPORT_QC.length + i,
+    //     )?.letter;
+    //     if (!colImageStart) {
+    //       console.warn(`Cột ảnh không hợp lệ ở row ${index + 2}`);
+    //       continue;
+    //     }
 
-            worksheet.addImage(
-              image,
-              `${colImageStart}${index + 2}:${colImageStart}${index + 2}`,
-            );
-          }
-        }
-      });
-    });
-    const startColMer = worksheet.getColumn(LIST_COL_REPORT_QC.length).letter;
-    const endColMer = worksheet.getColumn(
-      LIST_COL_REPORT_QC.length - 1 + maxColMerge,
-    ).letter;
-    if (maxColMerge !== 0) {
-      worksheet.mergeCells(`${startColMer}1:${endColMer}1`);
-    }
+    //     const filePath = join(
+    //       process.env.UPLOAD_FOLDER || './public',
+    //       img.fileUrl,
+    //     );
+
+    //     if (fs.existsSync(filePath)) {
+    //       const image = workbook.addImage({
+    //         buffer: fs.readFileSync(filePath),
+    //         extension: img.fileExtenstion,
+    //       });
+    //       console.log(`${colImageStart}${index + 2}:${colImageStart}${index + 2}`);
+          
+    //       worksheet.addImage(
+    //         image,
+    //         `${colImageStart}${index + 2}:${colImageStart}${index + 2}`,
+    //       );
+    //     }
+    //   }
+    // }
+
+    // arrImage.map(async (item) => {
+    //   const index = item.index;
+    //   const lengthImages = item.images.length;
+    //   if (lengthImages > maxColMerge) {
+    //     maxColMerge = lengthImages;
+    //   }
+    //   item.images.map((img, i) => {
+    //     if (img.type === 'IMG') {
+    //       const colImageStart = worksheet.getColumn(
+    //         LIST_COL_REPORT_QC.length + i,
+    //       ).letter;
+    //       const filePath = join(
+    //         process.env.UPLOAD_FOLDER || './public',
+    //         img.fileUrl,
+    //       );
+    //       if (fs.existsSync(filePath)) {
+    //         //const image = workbook.addImage({
+    //         //  buffer: fs.readFileSync(filePath),
+    //          // extension: img.fileExtenstion,
+    //         //});
+
+    //         //worksheet.addImage(
+    //         //  image,
+    //         //  `${colImageStart}${index + 2}:${colImageStart}${index + 2}`,
+    //         //);
+    //       }
+    //     }
+    //   });
+    // });
+    // const startColMer = worksheet.getColumn(LIST_COL_REPORT_QC.length).letter;
+    // const endColMer = worksheet.getColumn(
+    //   LIST_COL_REPORT_QC.length - 1 + maxColMerge,
+    // ).letter;
+    // if (maxColMerge !== 0) {
+    //   worksheet.mergeCells(`${startColMer}1:${endColMer}1`);
+    // }
     // worksheet.addImage(
     //   imageId,
     //   `${colImageStart}${index + 2}:${colImageStart}${index + 2}`,
@@ -614,9 +644,6 @@ export class ReportQCService {
       });
     });
 
-    const buffer = await workbook.xlsx.writeBuffer();
-    res.status(HttpStatus.OK);
-
     res.setHeader(
       'Content-Type',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -625,6 +652,11 @@ export class ReportQCService {
       'Content-Disposition',
       'attachment; filename=' + 'ReportABC.xlsx',
     );
+    res.status(HttpStatus.OK);
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    
+    res.setHeader('Content-Length', buffer.length);
     res.end(buffer);
   }
 
@@ -642,7 +674,7 @@ export class ReportQCService {
       where: { deleteAt: LessThanOrEqual(sixMonthsAgo) },
       relations: ['media'],
     });
-    
+
     if (dataFind?.length > 0) {
       dataFind.map(async (item) => {
         const oldID = item?.reportId;

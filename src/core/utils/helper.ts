@@ -566,7 +566,7 @@ export const LIST_COL_REPORT_QC = [
   { key: 'vendorStock', header: 'Vendor Stock', width: 17 },
   { key: 'author', header: '등록자(Người đăng ký)', width: 25 },
   { key: 'remark', header: '조치사항(Hành động đã thực hiện)', width: 40 },
-  { key: 'iamgeNG', header: 'Hình Ảnh' },
+  // { key: 'iamgeNG', header: 'Hình Ảnh' },
 ];
 export const formatNumberWithCommas = (text) => {
   if (!text) {
