@@ -67,7 +67,7 @@ export class ConceptService {
       if (personName?.length > 0) {
         item.user = { userId: In(personName) };
       }
-      if(startDate && endDate) {
+      if (startDate && endDate) {
         item.regisDate = Between(startDate, endDate);
       }
       if (categoryFilter?.length > 0) {
@@ -298,7 +298,7 @@ export class ConceptService {
           },
         },
         relations: ['category'],
-        where: { code: Like(`%${code}%`),deleteAt: IsNull() },
+        where: { code: Like(`%${code}%`), deleteAt: IsNull() },
       });
       if (data) {
         return res.status(HttpStatus.OK).send(data);
@@ -332,7 +332,10 @@ export class ConceptService {
 
     if (dataObj?.code) {
       const codeStr = `${dataObj?.code}`.trim();
-      const checkCode = await this.repository.findOneBy({ code: codeStr,deleteAt:IsNull() });
+      const checkCode = await this.repository.findOneBy({
+        code: codeStr,
+        deleteAt: IsNull(),
+      });
       if (checkCode) {
         this.fileConceptService.deleteUploadedFiles(files);
         return res
@@ -442,7 +445,10 @@ export class ConceptService {
         .send({ message: 'Cannot found ID!' });
     }
     const codeStr = `${dataObj?.code}`.trim();
-    const checkCode = await this.repository.findOneBy({ code: codeStr,deleteAt:IsNull() });
+    const checkCode = await this.repository.findOneBy({
+      code: codeStr,
+      deleteAt: IsNull(),
+    });
 
     const concept = await this.repository.findOne({
       where: { conceptId: dataObj?.conceptId },
@@ -677,8 +683,10 @@ export class ConceptService {
     //6 tháng xóa 1 lần
     const numMonthDelete = process.env.MONTH_DELETE
       ? parseInt(process.env.MONTH_DELETE)
-      : 6;
-
+      : 0;
+    if (numMonthDelete == 0) {
+      return;
+    }
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - numMonthDelete);
     console.log('Start Cron job(Approval) chạy lúc 00h05 hằng ngày');

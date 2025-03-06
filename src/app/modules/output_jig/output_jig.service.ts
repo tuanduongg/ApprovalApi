@@ -1327,8 +1327,8 @@ export class OutputJigService {
     //6 tháng xóa 1 lần
     const numMonthDelete = process.env.MONTH_DELETE
       ? parseInt(process.env.MONTH_DELETE)
-      : 6;
-
+      : 0;
+    if(numMonthDelete === 0) return;
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - numMonthDelete);
     console.log('Start Cron job(OutputJig) chạy lúc 00h05 hằng ngày');

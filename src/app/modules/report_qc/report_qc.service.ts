@@ -583,7 +583,7 @@ export class ReportQCService {
     //         extension: img.fileExtenstion,
     //       });
     //       console.log(`${colImageStart}${index + 2}:${colImageStart}${index + 2}`);
-          
+
     //       worksheet.addImage(
     //         image,
     //         `${colImageStart}${index + 2}:${colImageStart}${index + 2}`,
@@ -655,7 +655,7 @@ export class ReportQCService {
     res.status(HttpStatus.OK);
 
     const buffer = await workbook.xlsx.writeBuffer();
-    
+
     res.setHeader('Content-Length', buffer.length);
     res.end(buffer);
   }
@@ -665,8 +665,8 @@ export class ReportQCService {
     //6 tháng xóa 1 lần
     const numMonthDelete = process.env.MONTH_DELETE
       ? parseInt(process.env.MONTH_DELETE)
-      : 6;
-
+      : 0;
+    if (numMonthDelete === 0) return;
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - numMonthDelete);
     console.log('Start Cron job(QPN) chạy lúc 00h05 hằng ngày');
